@@ -1,0 +1,555 @@
+2025-08-24 11:45:50,865 [INFO] app - Program started | run_id=20250824-114550 | output_dir=F:\BiShe_02\output
+2025-08-24 11:46:15,039 [INFO] graph - ENTER node=pre | raw_len=146
+2025-08-24 11:46:15,039 [INFO] node.preprocess - start preprocess | raw=Filter data/hybrid_manufacturing_categorical.csv for columns with Processing_Time <= 50, and then sort by Machine_Availability in descending order
+2025-08-24 11:46:15,687 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 11:46:15,688 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 11:46:15,689 [INFO] node.intent - intent.run | mode=llm
+2025-08-24 11:46:22,216 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 11:46:22,222 [INFO] node.intent - intent.out | need_qt=True need_anomaly=False algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-24 11:46:22,222 [INFO] graph - node=intent | need_qt=True need_anomaly=False algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-24 11:46:22,224 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-24 11:46:22,224 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-24 11:46:24,265 [INFO] rag.kb - KB built | docs=42
+2025-08-24 11:46:24,279 [INFO] rag.kb - KB search | q_len=159 | top_k=8
+2025-08-24 11:46:24,279 [INFO] graph - route: kb -> qt
+2025-08-24 11:46:24,281 [INFO] rag.thought - thought | prompt_chars=8989 | cols=13 | kb_snippets=8
+2025-08-24 11:46:44,429 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 11:46:44,430 [INFO] rag.thought - thought | llm_json_len=329
+2025-08-24 11:46:44,434 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-24 11:46:44,435 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'Processing_Time <= 50'} | cur_type=NoneType
+2025-08-24 11:46:44,453 [INFO] rag.execute - OK tool=select_rows | result_type=DataFrame
+2025-08-24 11:46:44,467 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_01_select_rows.csv
+2025-08-24 11:46:44,468 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-24 11:46:44,468 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'on': 'Processing_Time', 'column': 'Machine_Availability'} | cur_type=DataFrame
+2025-08-24 11:46:44,469 [INFO] rag.execute - OK tool=sort_rows | result_type=DataFrame
+2025-08-24 11:46:44,476 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_02_sort_rows.csv
+2025-08-24 11:46:44,476 [INFO] rag.execute - Q&T finished | last_csv=output\qt_step_02_sort_rows.csv
+2025-08-24 11:46:44,476 [INFO] rag.qt - execute -> END
+2025-08-24 11:46:44,477 [INFO] graph - route: qt -> summarizer
+2025-08-24 11:46:46,835 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 11:46:46,836 [INFO] app - Program finished | run_id=20250824-114550
+2025-08-24 12:18:29,075 [INFO] app - Program started | run_id=20250824-121829 | output_dir=F:\BiShe_02\output
+2025-08-24 12:19:13,521 [INFO] graph - ENTER node=pre | raw_len=3
+2025-08-24 12:19:13,521 [INFO] node.preprocess - start preprocess | raw=您说：
+2025-08-24 12:19:13,537 [INFO] node.preprocess - preprocess | default_file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 12:19:13,537 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 12:19:13,537 [INFO] node.intent - intent.run | mode=llm
+2025-08-24 12:19:20,792 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 12:19:20,795 [INFO] node.intent - intent.out | need_qt=0 need_anomaly=0 algos=0 csv=data\hybrid_manufacturing_categorical.csv
+2025-08-24 12:19:20,795 [INFO] graph - node=intent | need_qt=0 need_anomaly=0 algos=0 csv=data\hybrid_manufacturing_categorical.csv
+2025-08-24 12:19:20,796 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-24 12:19:20,796 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-24 12:19:22,826 [INFO] rag.kb - KB built | docs=42
+2025-08-24 12:19:22,837 [INFO] rag.kb - KB search | q_len=3 | top_k=8
+2025-08-24 12:19:22,837 [INFO] graph - route: kb -> summarizer
+2025-08-24 12:19:23,488 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 12:19:23,490 [INFO] app - Program finished | run_id=20250824-121829
+2025-08-24 12:19:50,587 [INFO] app - Program started | run_id=20250824-121950 | output_dir=F:\BiShe_02\output
+2025-08-24 12:20:09,013 [INFO] graph - ENTER node=pre | raw_len=262
+2025-08-24 12:20:09,022 [INFO] node.preprocess - start preprocess | raw=On data/hybrid_manufacturing_categorical.csv, keep rows where Processing_Time <= 40 AND Machine_Availability >= 95; then add a derived column efficiency = Material_Used / Processing_Time; finally sort by efficiency in descending order and return the top 10 rows.
+2025-08-24 12:20:09,600 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 12:20:09,600 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-24 12:20:09,600 [INFO] node.intent - intent.run | mode=llm
+2025-08-24 12:20:18,555 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 12:20:18,573 [INFO] node.intent - intent.out | need_qt=true need_anomaly=false algos=[] csv=data/hybrid_manufacturing_categorical.csv
+2025-08-24 12:20:18,574 [INFO] graph - node=intent | need_qt=true need_anomaly=false algos=[] csv=data/hybrid_manufacturing_categorical.csv
+2025-08-24 12:20:18,577 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-24 12:20:18,577 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-24 12:20:21,121 [INFO] rag.kb - KB built | docs=42
+2025-08-24 12:20:21,178 [INFO] rag.kb - KB search | q_len=275 | top_k=8
+2025-08-24 12:20:21,179 [INFO] graph - route: kb -> qt
+2025-08-24 12:20:21,181 [INFO] rag.thought - thought | prompt_chars=9121 | cols=13 | kb_snippets=8
+2025-08-24 12:20:50,565 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-24 12:20:50,567 [INFO] rag.thought - thought | llm_json_len=517
+2025-08-24 12:20:50,569 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-24 12:20:50,570 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'Processing_Time <= 40 AND Machine_Availability >= 95'} | cur_type=NoneType
+2025-08-24 12:20:50,596 [INFO] rag.execute - OK tool=select_rows | result_type=DataFrame
+2025-08-24 12:20:50,605 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_01_select_rows.csv
+2025-08-24 12:20:50,606 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-24 12:20:50,606 [INFO] rag.execute - RUN tool=add_derived_column | args={'formula': 'Material_Used / Processing_Time', 'name': 'efficiency'} | cur_type=DataFrame
+2025-08-24 12:20:50,610 [INFO] rag.execute - OK tool=add_derived_column | result_type=DataFrame
+2025-08-24 12:20:50,617 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_02_add_derived_column.csv
+2025-08-24 12:20:50,618 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-24 12:20:50,618 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'return_top_n': 10, 'column': 'efficiency'} | cur_type=DataFrame
+2025-08-24 12:20:50,619 [INFO] rag.execute - OK tool=sort_rows | result_type=DataFrame
+2025-08-24 12:20:50,624 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_03_sort_rows.csv
+2025-08-24 12:20:50,625 [INFO] rag.execute - Q&T finished | last_csv=output\qt_step_03_sort_rows.csv
+2025-08-24 12:20:50,625 [INFO] rag.qt - execute -> END
+2025-08-24 12:20:50,626 [INFO] graph - route: qt -> anomaly
+2025-08-24 12:20:50,627 [INFO] rag.anomaly - anomaly.benchmark | path=data/hybrid_manufacturing_categorical.csv | top_q=0.020
+2025-08-24 12:20:50,639 [INFO] rag.anomaly - dataset | rows=1000 cols(total)=13 cols(numeric)=4 has_y=False
+2025-08-24 12:20:50,639 [INFO] rag.anomaly - algorithms | selected=['EIF', 'LOF', 'COPOD', 'INNE', 'OCSVM', 'AE'] (empty means all=['EIF', 'LOF', 'COPOD', 'INNE', 'OCSVM', 'AE'])
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - EIF grid done | variants=36 | best=1.0000 | time=1.86s
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,498 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,499 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,500 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,501 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,502 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,502 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-24 12:20:52,502 [INFO] rag.anomaly - algo=EIF | pr_auc=nan | f1=nan | time=1.86s
+2025-08-25 14:26:45,548 [INFO] app - Program started | run_id=20250825-142645 | output_dir=F:\BiShe_02\output
+2025-08-25 14:29:01,753 [INFO] graph - ENTER node=pre | raw_len=262
+2025-08-25 14:29:01,754 [INFO] node.preprocess - start preprocess | raw=On data/hybrid_manufacturing_categorical.csv, keep rows where Processing_Time <= 40 AND Machine_Availability >= 95; then add a derived column efficiency = Material_Used / Processing_Time; finally sort by efficiency in descending order and return the top 10 rows.
+2025-08-25 14:29:01,956 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:29:01,956 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:29:01,957 [INFO] node.intent - intent.run | mode=llm
+2025-08-25 14:29:11,605 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:29:11,609 [INFO] node.intent - intent.out | need_qt=True need_anomaly=False algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:29:11,609 [INFO] graph - node=intent | need_qt=True need_anomaly=False algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:29:11,611 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-25 14:29:11,611 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-25 14:29:13,806 [INFO] rag.kb - KB built | docs=42
+2025-08-25 14:29:13,823 [INFO] rag.kb - KB search | q_len=275 | top_k=8
+2025-08-25 14:29:13,823 [INFO] graph - route: kb -> qt
+2025-08-25 14:29:13,825 [INFO] rag.thought - thought | prompt_chars=9121 | cols=13 | kb_snippets=8
+2025-08-25 14:29:56,230 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:29:56,233 [INFO] rag.thought - thought | llm_json_len=615
+2025-08-25 14:29:56,236 [INFO] rag.execute - ENTER execute | pending=4
+2025-08-25 14:29:56,236 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'Processing_Time <= 40 AND Machine_Availability >= 95'} | cur_type=NoneType
+2025-08-25 14:29:56,263 [INFO] rag.execute - OK tool=select_rows | result_type=DataFrame
+2025-08-25 14:29:56,272 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_01_select_rows.csv
+2025-08-25 14:29:56,273 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-25 14:29:56,273 [INFO] rag.execute - RUN tool=add_derived_column | args={'formula': 'Material_Used / Processing_Time', 'name': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:29:56,277 [INFO] rag.execute - OK tool=add_derived_column | result_type=DataFrame
+2025-08-25 14:29:56,282 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_02_add_derived_column.csv
+2025-08-25 14:29:56,284 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-25 14:29:56,284 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'column': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:29:56,285 [INFO] rag.execute - OK tool=sort_rows | result_type=DataFrame
+2025-08-25 14:29:56,290 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_03_sort_rows.csv
+2025-08-25 14:29:56,292 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-25 14:29:56,292 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'top_n', 'n': 10} | cur_type=DataFrame
+2025-08-25 14:29:56,292 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 120, in select_rows
+    raise ValueError("top_n 需要 column/sort_column")
+ValueError: top_n 需要 column/sort_column
+2025-08-25 14:29:56,294 [INFO] rag.thought - thought | prompt_chars=9121 | cols=13 | kb_snippets=8
+2025-08-25 14:30:40,391 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:30:40,392 [INFO] rag.thought - thought | llm_json_len=641
+2025-08-25 14:30:40,395 [INFO] rag.execute - ENTER execute | pending=4
+2025-08-25 14:30:40,395 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'Processing_Time <= 40 AND Machine_Availability >= 95'} | cur_type=DataFrame
+2025-08-25 14:30:40,401 [INFO] rag.execute - OK tool=select_rows | result_type=DataFrame
+2025-08-25 14:30:40,407 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_04_select_rows.csv
+2025-08-25 14:30:40,408 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-25 14:30:40,408 [INFO] rag.execute - RUN tool=add_derived_column | args={'formula': 'Material_Used / Processing_Time', 'name': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:30:40,410 [INFO] rag.execute - OK tool=add_derived_column | result_type=DataFrame
+2025-08-25 14:30:40,416 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_05_add_derived_column.csv
+2025-08-25 14:30:40,417 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-25 14:30:40,417 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'by2': 'Processing_Time', 'order2': 'desc', 'column': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:30:40,418 [INFO] rag.execute - OK tool=sort_rows | result_type=DataFrame
+2025-08-25 14:30:40,423 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_06_sort_rows.csv
+2025-08-25 14:30:40,424 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-25 14:30:40,424 [INFO] rag.execute - RUN tool=top_n | args={'n': 10, 'order': 'desc'} | cur_type=DataFrame
+2025-08-25 14:30:40,424 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 211, in top_n
+    col = (_col(args, "column", "sort_column",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 42, in _col
+    raise KeyError(f"Need one of {names}")
+KeyError: "Need one of ('column', 'sort_column', 'target_column')"
+2025-08-25 14:30:40,425 [INFO] rag.thought - thought | prompt_chars=9121 | cols=13 | kb_snippets=8
+2025-08-25 14:31:12,795 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:31:12,796 [INFO] rag.thought - thought | llm_json_len=510
+2025-08-25 14:31:12,798 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-25 14:31:12,798 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'Processing_Time <= 40 AND Machine_Availability >= 95'} | cur_type=DataFrame
+2025-08-25 14:31:12,802 [INFO] rag.execute - OK tool=select_rows | result_type=DataFrame
+2025-08-25 14:31:12,808 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_07_select_rows.csv
+2025-08-25 14:31:12,809 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-25 14:31:12,809 [INFO] rag.execute - RUN tool=add_derived_column | args={'formula': 'Material_Used / Processing_Time', 'name': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:31:12,812 [INFO] rag.execute - OK tool=add_derived_column | result_type=DataFrame
+2025-08-25 14:31:12,817 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_08_add_derived_column.csv
+2025-08-25 14:31:12,818 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-25 14:31:12,818 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'limit': 10, 'column': 'efficiency'} | cur_type=DataFrame
+2025-08-25 14:31:12,818 [INFO] rag.execute - OK tool=sort_rows | result_type=DataFrame
+2025-08-25 14:31:12,823 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_09_sort_rows.csv
+2025-08-25 14:31:12,823 [INFO] rag.execute - Q&T finished | last_csv=output\qt_step_09_sort_rows.csv
+2025-08-25 14:31:12,824 [INFO] rag.qt - execute -> END
+2025-08-25 14:31:54,880 [INFO] app - Program started | run_id=20250825-143154 | output_dir=F:\BiShe_02\output
+2025-08-25 14:32:57,543 [INFO] graph - ENTER node=pre | raw_len=281
+2025-08-25 14:32:57,543 [INFO] node.preprocess - start preprocess | raw=For data/hybrid_manufacturing_categorical.csv, group by Machine_ID and compute the 90th percentile of Processing_Time (keep_all); then take group_top_n with n=2 by Processing_Time in descending order; finally select columns Machine_ID, Job_ID, Processing_Time, p90_Processing_Time.
+2025-08-25 14:32:57,761 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:32:57,761 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:32:57,762 [INFO] node.intent - intent.run | mode=llm
+2025-08-25 14:33:10,051 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:33:10,055 [INFO] node.intent - intent.out | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:33:10,056 [INFO] graph - node=intent | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:33:10,059 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-25 14:33:10,059 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-25 14:33:12,045 [INFO] rag.kb - KB built | docs=42
+2025-08-25 14:33:12,065 [INFO] rag.kb - KB search | q_len=290 | top_k=8
+2025-08-25 14:33:12,066 [INFO] graph - route: kb -> qt
+2025-08-25 14:33:12,067 [INFO] rag.thought - thought | prompt_chars=8841 | cols=13 | kb_snippets=8
+2025-08-25 14:33:51,939 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:33:51,941 [INFO] rag.thought - thought | llm_json_len=618
+2025-08-25 14:33:51,945 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-25 14:33:51,945 [INFO] rag.execute - RUN tool=group_by_aggregate | args={'agg': 'percentile', 'q': 0.9, 'group_by': 'Machine_ID', 'keep_all': 'True', 'pair': 'Processing_Time'} | cur_type=NoneType
+2025-08-25 14:33:51,956 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 333, in group_by_aggregate
+    gcol = _col(args, "group_column")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 42, in _col
+    raise KeyError(f"Need one of {names}")
+KeyError: "Need one of ('group_column',)"
+2025-08-25 14:33:51,959 [INFO] rag.thought - thought | prompt_chars=8841 | cols=13 | kb_snippets=8
+2025-08-25 14:34:35,851 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:34:35,852 [INFO] rag.thought - thought | llm_json_len=618
+2025-08-25 14:34:35,854 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-25 14:34:35,854 [INFO] rag.execute - RUN tool=group_top_n | args={'n': 2, 'order': 'desc', 'keep_all': 'True', 'column': 'Processing_Time'} | cur_type=NoneType
+2025-08-25 14:34:35,865 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 224, in group_top_n
+    g  = args["group_column"]
+         ~~~~^^^^^^^^^^^^^^^^
+KeyError: 'group_column'
+2025-08-25 14:34:35,868 [INFO] rag.thought - thought | prompt_chars=8841 | cols=13 | kb_snippets=8
+2025-08-25 14:35:11,154 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:35:11,155 [INFO] rag.thought - thought | llm_json_len=629
+2025-08-25 14:35:11,157 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-25 14:35:11,157 [INFO] rag.execute - RUN tool=select_columns | args={'pair': 'Machine_ID, Job_ID, Processing_Time, Processing_Time'} | cur_type=NoneType
+2025-08-25 14:35:11,171 [INFO] rag.execute - OK tool=select_columns | result_type=DataFrame
+2025-08-25 14:35:11,178 [INFO] rag.execute - Saved intermediate DF -> output\qt_step_01_select_columns.csv
+2025-08-25 14:35:11,178 [INFO] rag.execute - Q&T finished | last_csv=output\qt_step_01_select_columns.csv
+2025-08-25 14:35:11,178 [INFO] rag.qt - execute -> END
+2025-08-25 14:35:11,180 [INFO] graph - route: qt -> summarizer
+2025-08-25 14:35:14,484 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:35:14,485 [INFO] app - Program finished | run_id=20250825-143154
+2025-08-25 14:39:27,955 [INFO] app - Program started | run_id=20250825-143927 | output_dir=F:\BiShe_02\output
+2025-08-25 14:39:37,551 [INFO] graph - ENTER node=pre | raw_len=294
+2025-08-25 14:39:37,551 [INFO] node.preprocess - start preprocess | raw=Using data/hybrid_manufacturing_categorical.csv, filter rows where Actual_Start is between 2023-03-18 10:00 and 2023-03-18 12:00 (inclusive); then compute rolling_average of Energy_Consumption with window=5; finally select columns time_stamp, Energy_Consumption, rolling_avg_Energy_Consumption.
+2025-08-25 14:39:37,693 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:39:37,693 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 14:39:37,700 [INFO] node.intent - intent.run | mode=llm
+2025-08-25 14:39:50,061 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:39:50,066 [INFO] node.intent - intent.out | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:39:50,066 [INFO] graph - node=intent | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 14:39:50,068 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-25 14:39:50,068 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-25 14:39:52,045 [INFO] rag.kb - KB built | docs=42
+2025-08-25 14:39:52,063 [INFO] rag.kb - KB search | q_len=282 | top_k=8
+2025-08-25 14:39:52,063 [INFO] graph - route: kb -> qt
+2025-08-25 14:39:52,065 [INFO] rag.thought - thought | prompt_chars=9187 | cols=13 | kb_snippets=8
+2025-08-25 14:42:09,386 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:42:09,386 [INFO] rag.thought - thought | llm_json_len=3
+2025-08-25 14:42:09,386 [ERROR] rag.validator - JSON decode failed: Expecting value: line 1 column 1 (char 0)
+2025-08-25 14:42:09,386 [INFO] rag.qt - validator -> thought (replan)
+2025-08-25 14:42:09,386 [INFO] rag.thought - thought | prompt_chars=9187 | cols=13 | kb_snippets=8
+2025-08-25 14:44:21,283 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:44:21,285 [INFO] rag.thought - thought | llm_json_len=3
+2025-08-25 14:44:21,286 [ERROR] rag.validator - JSON decode failed: Expecting value: line 1 column 1 (char 0)
+2025-08-25 14:44:21,286 [INFO] rag.qt - validator -> thought (replan)
+2025-08-25 14:44:21,287 [INFO] rag.thought - thought | prompt_chars=9187 | cols=13 | kb_snippets=8
+2025-08-25 14:46:32,107 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:46:32,108 [INFO] rag.thought - thought | llm_json_len=3
+2025-08-25 14:46:32,110 [ERROR] rag.validator - JSON decode failed: Expecting value: line 1 column 1 (char 0)
+2025-08-25 14:46:32,110 [INFO] rag.qt - validator -> thought (replan)
+2025-08-25 14:46:32,111 [INFO] rag.thought - thought | prompt_chars=9187 | cols=13 | kb_snippets=8
+2025-08-25 14:48:42,189 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:48:42,237 [INFO] rag.thought - thought | llm_json_len=7
+2025-08-25 14:48:42,237 [WARNING] rag.validator - Exceeded max retry, giving up.
+2025-08-25 14:48:42,237 [INFO] graph - route: qt -> summarizer
+2025-08-25 14:48:45,300 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 14:48:45,300 [INFO] app - Program finished | run_id=20250825-143927
+2025-08-25 15:06:17,951 [INFO] app - Program started | run_id=20250825-150617 | output_dir=F:\BiShe_02\output
+2025-08-25 15:07:21,170 [INFO] graph - ENTER node=pre | raw_len=307
+2025-08-25 15:07:21,170 [INFO] node.preprocess - start preprocess | raw=On data/hybrid_manufacturing_categorical.csv, calculate the average delay in hours as Scheduled_Start - Actual_Start and attach a per-row delay column; then keep rows where delay > 0.5 hours and sort by delay in descending order; also plot_concurrent_tasks_line with freq=30T to output/concurrent_30min.png.
+2025-08-25 15:07:22,091 [INFO] node.preprocess - preprocess | file=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 15:07:22,093 [INFO] graph - EXIT  node=pre | csv_path=data\hybrid_manufacturing_categorical.csv | cols=13
+2025-08-25 15:07:22,093 [INFO] node.intent - intent.run | mode=llm
+2025-08-25 15:07:28,225 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:07:28,228 [INFO] node.intent - intent.out | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 15:07:28,228 [INFO] graph - node=intent | need_qt=1 need_anomaly=0 algos=None csv=data/hybrid_manufacturing_categorical.csv
+2025-08-25 15:07:28,230 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-25 15:07:28,231 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-25 15:07:30,647 [INFO] rag.kb - KB built | docs=42
+2025-08-25 15:07:30,734 [INFO] rag.kb - KB search | q_len=344 | top_k=8
+2025-08-25 15:07:30,735 [INFO] graph - route: kb -> qt
+2025-08-25 15:07:30,737 [INFO] rag.thought - thought | prompt_chars=9683 | cols=13 | kb_snippets=8
+2025-08-25 15:08:14,324 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:08:14,326 [INFO] rag.thought - thought | llm_json_len=747
+2025-08-25 15:08:14,328 [INFO] rag.execute - ENTER execute | pending=5
+2025-08-25 15:08:14,329 [INFO] rag.execute - RUN tool=calculate_delay_avg_grouped | args={'group_column': 'Operation_Type', 'col1': 'Actual_Start', 'col2': 'Scheduled_Start'} | cur_type=NoneType
+2025-08-25 15:08:14,339 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 477, in calculate_delay_avg_grouped
+    dsec = (pd.to_datetime(df[args["column1"]]) -
+                              ~~~~^^^^^^^^^^^
+KeyError: 'column1'
+2025-08-25 15:08:14,390 [INFO] rag.thought - thought | prompt_chars=9683 | cols=13 | kb_snippets=8
+2025-08-25 15:09:00,095 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:09:00,095 [INFO] rag.thought - thought | llm_json_len=778
+2025-08-25 15:09:00,095 [INFO] rag.execute - ENTER execute | pending=4
+2025-08-25 15:09:00,095 [INFO] rag.execute - RUN tool=add_derived_column | args={'formula': 'Scheduled_Start - Actual_Start'} | cur_type=NoneType
+2025-08-25 15:09:00,122 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 288, in add_derived_column
+    df[args["name"]] = delta
+       ~~~~^^^^^^^^
+KeyError: 'name'
+2025-08-25 15:09:00,124 [INFO] rag.thought - thought | prompt_chars=9683 | cols=13 | kb_snippets=8
+2025-08-25 15:09:47,754 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:09:47,770 [INFO] rag.thought - thought | llm_json_len=813
+2025-08-25 15:09:47,772 [INFO] rag.execute - ENTER execute | pending=3
+2025-08-25 15:09:47,772 [INFO] rag.execute - RUN tool=select_rows | args={'condition': 'delay > 0.5'} | cur_type=NoneType
+2025-08-25 15:09:47,786 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\anaconda3\envs\langgraph-env\Lib\site-packages\pandas\core\indexes\base.py", line 3812, in get_loc
+    return self._engine.get_loc(casted_key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "pandas/_libs/index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7088, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7096, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'delay'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 197, in select_rows
+    return df[_BOPS[op_sym](df[col], val)]
+                            ~~^^^^^
+  File "F:\anaconda3\envs\langgraph-env\Lib\site-packages\pandas\core\frame.py", line 4107, in __getitem__
+    indexer = self.columns.get_loc(key)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\anaconda3\envs\langgraph-env\Lib\site-packages\pandas\core\indexes\base.py", line 3819, in get_loc
+    raise KeyError(key) from err
+KeyError: 'delay'
+2025-08-25 15:09:47,857 [INFO] rag.thought - thought | prompt_chars=9683 | cols=13 | kb_snippets=8
+2025-08-25 15:10:35,400 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:10:35,413 [INFO] rag.thought - thought | llm_json_len=775
+2025-08-25 15:10:35,415 [INFO] rag.execute - ENTER execute | pending=2
+2025-08-25 15:10:35,415 [INFO] rag.execute - RUN tool=sort_rows | args={'order': 'desc', 'column': 'delay'} | cur_type=NoneType
+2025-08-25 15:10:35,426 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 207, in sort_rows
+    return df.sort_values(col, ascending=asc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\anaconda3\envs\langgraph-env\Lib\site-packages\pandas\core\frame.py", line 7196, in sort_values
+    k = self._get_label_or_level_values(by[0], axis=axis)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\anaconda3\envs\langgraph-env\Lib\site-packages\pandas\core\generic.py", line 1911, in _get_label_or_level_values
+    raise KeyError(key)
+KeyError: 'delay'
+2025-08-25 15:10:35,467 [INFO] rag.thought - thought | prompt_chars=9683 | cols=13 | kb_snippets=8
+2025-08-25 15:11:19,768 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:11:19,768 [INFO] rag.thought - thought | llm_json_len=775
+2025-08-25 15:11:19,768 [INFO] rag.execute - ENTER execute | pending=1
+2025-08-25 15:11:19,768 [INFO] rag.execute - RUN tool=plot_concurrent_tasks_line | args={'freq': '30T', 'file': 'output/concurrent_30min.png'} | cur_type=NoneType
+2025-08-25 15:11:21,068 [INFO] rag.execute - OK tool=plot_concurrent_tasks_line | result_type=str
+2025-08-25 15:11:21,068 [INFO] rag.execute - Q&T finished | last_csv=None
+2025-08-25 15:11:21,068 [INFO] rag.qt - execute -> END
+2025-08-25 15:11:21,068 [INFO] graph - route: qt -> summarizer
+2025-08-25 15:11:23,904 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:11:23,904 [INFO] app - Program finished | run_id=20250825-150617
+2025-08-25 15:15:55,711 [INFO] app - Program started | run_id=20250825-151555 | output_dir=F:\BiShe_02\output
+2025-08-25 15:16:03,427 [INFO] graph - ENTER node=pre | raw_len=146
+2025-08-25 15:16:03,427 [INFO] node.preprocess - start preprocess | raw=Run anomaly detection on data/SKAB/valve2 using EIF and OCSVM, and report the best model with the path to the exported Excel and PR/F1/ROC images.
+2025-08-25 15:16:03,497 [INFO] node.preprocess - preprocess | SKAB dir=F:\BiShe_02\data\SKAB\valve2 | cols=11
+2025-08-25 15:16:03,505 [INFO] graph - EXIT  node=pre | csv_path=F:\BiShe_02\data\SKAB\valve2 | cols=11
+2025-08-25 15:16:03,505 [INFO] node.intent - intent.run | mode=llm
+2025-08-25 15:16:09,787 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:16:09,793 [INFO] node.intent - intent.out | need_qt=True need_anomaly=True algos=None csv=data/SKAB/valve2.csv
+2025-08-25 15:16:09,793 [INFO] graph - node=intent | need_qt=True need_anomaly=True algos=None csv=data/SKAB/valve2.csv
+2025-08-25 15:16:09,796 [INFO] sentence_transformers.SentenceTransformer - Use pytorch device_name: cpu
+2025-08-25 15:16:09,797 [INFO] sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-25 15:16:12,350 [INFO] rag.kb - KB built | docs=40
+2025-08-25 15:16:12,434 [INFO] rag.kb - KB search | q_len=146 | top_k=8
+2025-08-25 15:16:12,435 [INFO] graph - route: kb -> qt
+2025-08-25 15:16:12,437 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:17:59,324 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:17:59,324 [INFO] rag.thought - thought | llm_json_len=2056
+2025-08-25 15:17:59,324 [ERROR] rag.validator - JSON decode failed: Expecting ',' delimiter: line 86 column 5 (char 1936)
+2025-08-25 15:17:59,324 [INFO] rag.qt - validator -> thought (replan)
+2025-08-25 15:17:59,339 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:19:25,128 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:19:25,128 [INFO] rag.thought - thought | llm_json_len=1530
+2025-08-25 15:19:25,128 [INFO] rag.execute - ENTER execute | pending=11
+2025-08-25 15:19:25,128 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='EIF'"} | cur_type=NoneType
+2025-08-25 15:19:25,141 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:19:25,141 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:21:11,981 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:21:11,981 [INFO] rag.thought - thought | llm_json_len=2059
+2025-08-25 15:21:11,991 [INFO] rag.execute - ENTER execute | pending=10
+2025-08-25 15:21:11,991 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='OCSVM'"} | cur_type=NoneType
+2025-08-25 15:21:11,997 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:21:12,003 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:23:11,747 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:23:11,750 [INFO] rag.thought - thought | llm_json_len=2094
+2025-08-25 15:23:11,752 [INFO] rag.execute - ENTER execute | pending=9
+2025-08-25 15:23:11,752 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='LOF'"} | cur_type=NoneType
+2025-08-25 15:23:11,763 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:23:11,765 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:25:07,792 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:25:07,793 [INFO] rag.thought - thought | llm_json_len=2094
+2025-08-25 15:25:07,795 [INFO] rag.execute - ENTER execute | pending=8
+2025-08-25 15:25:07,795 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='COPOD'"} | cur_type=NoneType
+2025-08-25 15:25:07,805 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:25:07,807 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:26:57,079 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:26:57,080 [INFO] rag.thought - thought | llm_json_len=2056
+2025-08-25 15:26:57,081 [INFO] rag.execute - ENTER execute | pending=7
+2025-08-25 15:26:57,081 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='INNE'"} | cur_type=NoneType
+2025-08-25 15:26:57,092 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:26:57,093 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:28:39,569 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:28:39,570 [INFO] rag.thought - thought | llm_json_len=2009
+2025-08-25 15:28:39,572 [INFO] rag.execute - ENTER execute | pending=6
+2025-08-25 15:28:39,572 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='AE'"} | cur_type=NoneType
+2025-08-25 15:28:39,583 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:28:39,584 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:30:32,046 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:30:32,046 [INFO] rag.thought - thought | llm_json_len=1915
+2025-08-25 15:30:32,046 [INFO] rag.execute - ENTER execute | pending=5
+2025-08-25 15:30:32,046 [INFO] rag.execute - RUN tool=select_rows | args={'condition': "column:anomaly, condition:='best_model'"} | cur_type=NoneType
+2025-08-25 15:30:32,075 [ERROR] rag.execute - Tool raised exception
+Traceback (most recent call last):
+  File "F:\BiShe_02\rag_nodes_react\execute.py", line 45, in execute_node
+    result = TOOL_REGISTRY[fname].func(cur, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\BiShe_02\logging_setup.py", line 45, in wrapper
+    res = fn(*a, **kw)
+          ^^^^^^^^^^^^
+  File "F:\BiShe_02\RAG_tool_functions.py", line 139, in select_rows
+    raise ValueError("select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）")
+ValueError: select_rows: 无法确定列名（请提供 column 或在 condition 里写 'Col OP ...'）
+2025-08-25 15:30:32,075 [INFO] rag.thought - thought | prompt_chars=8142 | cols=11 | kb_snippets=8
+2025-08-25 15:32:21,032 [INFO] httpx - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-25 15:32:21,032 [INFO] rag.thought - thought | llm_json_len=2018
