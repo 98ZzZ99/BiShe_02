@@ -31,6 +31,38 @@ import logging
 log = logging.getLogger("ad")
 from RAG_tool_functions import load_data
 
+def _apply_pca_with_guard(X: np.ndarray, pca_cfg: dict | None) -> np.ndarray:
+    """
+    安全地应用 PCA（支持 n_components 为 0~1 浮点或整数）。
+    - 浮点(0,1)：方差占比
+    - 整数：自动夹到 [1, min(n_samples, n_features)-1]，避免越界报错
+    """
+    if not pca_cfg or not pca_cfg.get("on", False):
+        return X
+
+    n_samples, n_features = X.shape
+    req = pca_cfg.get("n_components", 0.95)
+
+    if isinstance(req, float) and 0.0 < req < 1.0:
+        n_comp = req
+    else:
+        try:
+            n_int = int(req)
+        except (TypeError, ValueError):
+            n_int = n_features
+        max_comp = max(1, min(n_samples, n_features) - 1)
+        n_comp = max(1, min(n_int, max_comp))
+
+    svd_solver   = pca_cfg.get("svd_solver", "auto")
+    whiten       = bool(pca_cfg.get("whiten", False))
+    random_state = pca_cfg.get("random_state", None)
+
+    log.debug("PCA | on=%s n_components=%s->%s solver=%s whiten=%s",
+              True, req, n_comp, svd_solver, whiten)
+
+    pca = PCA(n_components=n_comp, svd_solver=svd_solver,
+              whiten=whiten, random_state=random_state)
+    return pca.fit_transform(X)
 
 # --- ② 工厂函数 —— 返回已经 .fit() 好且带 .decision_scores_ 属性的对象
 def _wrap_pyod(cls, **kw):
@@ -39,7 +71,13 @@ def _wrap_pyod(cls, **kw):
 
 ALGOS: Dict[str, Callable[[], object]] = {
     "EIF":   lambda : IsolationForest(ntrees=300, sample_size='auto', ndim=1, nthreads=-1),
-    "LOF":   lambda: LocalOutlierFactor(n_neighbors=20, novelty=True, contamination=0.02),
+    "LOF":   lambda: LocalOutlierFactor(
+        n_neighbors     =   75,
+        novelty         =   False,              # 同批数据打分
+        contamination   =   'auto',             # 若用分位阈值评估，影响很小
+        metric          =   'minkowski', p=1,   # 先用欧氏'minkowski', p=2；随后试 p=1（Manhattan）；最后是'chebyshev'
+        n_jobs          =   -1
+    ),
     "COPOD": _wrap_pyod(COPOD),
     "INNE":  _wrap_pyod(INNE, n_estimators=200, max_samples=256),
     "OCSVM": _wrap_pyod(OCSVM, kernel="rbf", nu=0.05, gamma="scale"),
@@ -141,6 +179,15 @@ def _try_get_score(model, X, prefer_neg=True) -> np.ndarray:
     """
     尽量拿到“连续”得分并统一方向：越大越异常
     """
+    # --- LOF 特判：统一为“越大越异常” ---
+    if isinstance(model, LocalOutlierFactor):
+        if getattr(model, "novelty", False):
+            # novelty=True 时，用 score_samples/decision_function，数值越低越异常 → 取负
+            return (-model.score_samples(X).ravel()).astype(float)
+        else:
+            # novelty=False 时，用 negative_outlier_factor_，数值越小越异常 → 取负
+            return (-model.negative_outlier_factor_.ravel()).astype(float)
+
     if hasattr(model, "decision_scores_"):            # PyOD / LOF(novelty=True)
         scores = model.decision_scores_
         prefer_neg = False  # ← ★加这一行 EIF / PyOD 系算法“越大越异常”
@@ -200,56 +247,36 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
 
         return _try_get_score(model, X, prefer_neg=False)
     # --- EIF：支持可配参数 ---
-    if name == "EIF":
-        scoring_metric    = cfg.get("scoring_metric", "depth")
-        penalize_range    = cfg.get("penalize_range", True)
-        weigh_by_kurtosis = cfg.get("weigh_by_kurtosis", True)
-        if scoring_metric == "density":
-            penalize_range = False
-            weigh_by_kurtosis = False
-
-        base_params = dict(
-            ntrees=cfg.get("ntrees", 500),
-            sample_size=cfg.get("sample_size", "auto"),
-            ndim=cfg.get("ndim", 2),
-            nthreads=cfg.get("nthreads", -1),
-            penalize_range=penalize_range,
-            weigh_by_kurtosis=weigh_by_kurtosis,
-        )
-        try:
-            model = IsolationForest(scoring_metric=scoring_metric, **base_params)
-        except TypeError:
-            model = IsolationForest(**base_params)
-
-        model.fit(X)
-        if hasattr(model, "anomaly_score_"):
-            return model.anomaly_score_.astype(float)
-        return _try_get_score(model, X, prefer_neg=False)
 
     # 1) 特征缩放：距离 / 密度模型敏感
     # if name in {"LOF", "OCSVM", "INNE", "COPOD"}: —— 尝试修改为只对 OCSVM 进行标准化
-    if name in {"OCSVM"}:
+    # 1) 先缩放：LOF/OCSVM 都对尺度敏感
+    # 1) 缩放
+    if name in {"OCSVM", "LOF"}:
         X_ = StandardScaler().fit_transform(X)
-    else:                       # EIF 或其它
+    else:
         X_ = X
 
-    # 1.5) 降维仅用于 LOF
-    if name == "LOF":
-        pca = PCA(n_components=0.95)  # 保留 95% 方差
-        X_ = pca.fit_transform(X_)
+    # 1.5) PCA（统一护栏 + 默认：仅 LOF 开启 0.95）
+    use_pca_default = (name == "LOF")
+    pca_cfg = {}
+    if isinstance(cfg.get("pca"), dict):
+        pca_cfg = cfg["pca"]
+    elif use_pca_default:
+        pca_cfg = {"on": True, "n_components": 0.95, "svd_solver": "auto", "whiten": False}
+
+    X_ = _apply_pca_with_guard(X_, pca_cfg if pca_cfg.get("on", False) else None)
 
     # 2) 训练
     model = ALGOS[name]()
     model.fit(X_)
-    # === DEBUG ===
+
     if name == "LOF":
         log.debug("LOF details | novelty=%s has_decision_fn=%s has_NOF=%s",
-                           getattr(model, "novelty", None),
-                           hasattr(model, "decision_function"),
-                           hasattr(model, "negative_outlier_factor_"))
+                  getattr(model, "novelty", None),
+                  hasattr(model, "decision_function"),
+                  hasattr(model, "negative_outlier_factor_"))
 
-
-    # 3) 取分（关键）
+    # 3) 取分（统一为“越大越异常”）
     scores = _try_get_score(model, X_, prefer_neg=True)
-
     return scores

@@ -15,8 +15,8 @@ _MODEL = SentenceTransformer("all-MiniLM-L6-v2")
 def _best_match(token: str, columns: List[str]) -> str | None:
     cands = [c for c,score,_ in process.extract(token, columns, scorer=fuzz.WRatio, limit=3) if score > 80]
     if not cands: return None
-    e1 = _MODEL.encode(token, convert_to_tensor=True)
-    e2 = _MODEL.encode(cands, convert_to_tensor=True)
+    e1 = _MODEL.encode(token, convert_to_tensor=True, show_progress_bar=False)
+    e2 = _MODEL.encode(cands, convert_to_tensor=True, show_progress_bar=False)
     sims = util.cos_sim(e1, e2)[0].tolist()
     return cands[sims.index(max(sims))]
 

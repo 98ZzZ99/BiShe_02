@@ -16,9 +16,53 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, precision_recall_fscore_support, average_precision_score, f1_score, roc_auc_score
 from RAG_eval import run_evaluation
 from logging_setup import get_logger
+import re
 log = get_logger("rag.anomaly")
 
 INVALID_SHEET_CHARS = r'[:\\/?*\[\]]'
+
+def _ensure_unique_path(path: str) -> str:
+    """若文件已存在，自动在末尾添加 _1, _2, ..."""
+    base, ext = os.path.splitext(path)
+    i, cand = 1, path
+    while os.path.exists(cand):
+        cand = f"{base}_{i}{ext}"
+        i += 1
+    return cand
+
+def _basename_for_csv_or_dir(csv_path: str) -> str:
+    """目录名或文件无扩展名作为基名"""
+    p = Path(csv_path)
+    if p.is_dir():
+        return p.name
+    return p.stem
+
+def _parse_eif_params(text: str) -> dict:
+    """
+    从自然语言中解析 EIF 参数（可选）：
+      例： "EIF(n=3, ss=256, t=800, metric=density)"
+    支持键别名：
+      n/ndim, ss/sample_size, t/trees/ntrees, metric/scoring_metric
+    """
+    text = text.lower()
+    m = re.search(r"eif\s*\((.*?)\)", text)
+    if not m:
+        return {}
+    body = m.group(1)
+    params = {}
+    for kv in re.split(r"[,\s]+", body):
+        if "=" not in kv:
+            continue
+        k, v = [x.strip() for x in kv.split("=", 1)]
+        if k in ("n", "ndim"):
+            params["ndim"] = int(v)
+        elif k in ("ss", "sample_size"):
+            params["sample_size"] = int(v) if v.isdigit() else v
+        elif k in ("t", "trees", "ntrees"):
+            params["ntrees"] = int(v)
+        elif k in ("metric", "scoring_metric"):
+            params["scoring_metric"] = v
+    return params
 
 def _to_sheet_name(name: str, used: set | None = None) -> str:
     """把任意算法名变成合法的 Excel sheet 名（去非法字符、<=31 字符、避免重名）。"""
@@ -114,7 +158,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
              len(df), len(df.columns), len(feature_cols), 'anomaly' in df.columns)
 
     processed_input = state.get("processed_input", "")
-    selected_algos = parse_algos(processed_input)
+    selected_algos = state.get("algorithms") or parse_algos(processed_input)
     log.info("algorithms | selected=%s (empty means all=%s)", selected_algos, list(ALGOS.keys()))
     if not selected_algos:  # 如果未解析到算法，则默认全选
         selected_algos = list(ALGOS.keys())
@@ -127,41 +171,32 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             state.update({"route": "finish", "final_answer": f"算法 '{name}' 未支持"})
             return state
         elif name == "EIF":
-            # ===== EIF 分支：可调参 + 自动挑最佳（把结果直接落在 scores_map / rows）=====
+            # ===== EIF：单次运行（默认）；若需网格调参，文本含 'tune'/'grid' 或 EIF_TUNING=1 =====
             t0 = time.perf_counter()
 
-            # --- 预处理配置 ---
-            eif_cfg = {
+            # --- 预处理配置（与原逻辑一致，可按需调）---
+            eif_pre = {
                 "scaler": "standard",  # "standard" | "robust" | "none"
-                "use_pca": True,
-                "pca_dim": 0.95,  # 0.95=保留95%方差；也可给整数
-                "smooth_k": 1,  # 想更稳可试 5、11
+                "use_pca": False,
+                "pca_dim": 0.95,
+                "smooth_k": 11,
             }
-
-            # --- 树模型网格（小而快） ---
-            grid_ntrees = [200, 400, 800]
-            grid_sample_size = [256, 512, 'auto']
-            grid_ndim = [1, 3]  # 可再加 2/4 做一次复验
-            grid_metric = ["depth", "density"]  # ← 新增：评分方式也一起扫
-            nthreads = -1
 
             # === 预处理 ===
             X0 = X.copy()
-            # 1) Scaler
-            if eif_cfg["scaler"] == "standard":
-                _scaler = StandardScaler()
+            if eif_pre["scaler"] == "standard":
+                _scaler = StandardScaler();
                 Xp = _scaler.fit_transform(X0)
-            elif eif_cfg["scaler"] == "robust":
-                _scaler = RobustScaler()
+            elif eif_pre["scaler"] == "robust":
+                _scaler = RobustScaler();
                 Xp = _scaler.fit_transform(X0)
             else:
                 Xp = X0
 
-            # 2) PCA
             pca = None
-            if eif_cfg["use_pca"]:
+            if eif_pre["use_pca"]:
                 n_samples, in_dim0 = Xp.shape[:2]
-                n_comp = eif_cfg["pca_dim"]
+                n_comp = eif_pre["pca_dim"]
                 if isinstance(n_comp, float) and 0.0 < n_comp < 1.0:
                     pca = PCA(n_components=n_comp, svd_solver="full", random_state=42)
                 else:
@@ -170,77 +205,131 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                     pca = PCA(n_components=n_comp_use, svd_solver="auto", random_state=42)
                 Xp = pca.fit_transform(Xp)
 
-            # === 扫网格 ===
-            variants = []
-            for ntrees, sample_size, ndim, metric in product(grid_ntrees, grid_sample_size, grid_ndim, grid_metric):
-                if isinstance(sample_size, int) and sample_size > len(Xp):
-                    continue
+            # --- 是否走网格？默认否 ---
+            want_tune = (
+                    ("tune" in processed_input.lower()) or
+                    ("grid" in processed_input.lower()) or
+                    (os.getenv("EIF_TUNING", "0") == "1")
+            )
 
-                cfg_eif = dict(
-                    ntrees=ntrees,
-                    sample_size=sample_size,
-                    ndim=ndim,
-                    nthreads=nthreads,
-                    scoring_metric=metric,
-                    penalize_range=True,
-                    weigh_by_kurtosis=True,
-                )
-                # ★ density 时自动关掉不兼容选项
-                if metric == "density":
-                    cfg_eif["penalize_range"] = False
-                    cfg_eif["weigh_by_kurtosis"] = False
+            if want_tune:
+                # === 原有『网格调参』路径（保留，必要时可用） ===
+                grid_ntrees = [200, 400, 800]
+                grid_sample_size = [256, 512, 'auto']
+                grid_ndim = [1, 3]
+                grid_metric = ["depth", "density"]
+                variants = []
 
-                sc = run_algo("EIF", Xp, cfg=cfg_eif)
-                sc = smooth(sc, eif_cfg["smooth_k"])
+                for ntrees, sample_size, ndim, metric in product(grid_ntrees, grid_sample_size, grid_ndim, grid_metric):
+                    if isinstance(sample_size, int) and sample_size > len(Xp):
+                        continue
+                    cfg_eif = dict(
+                        ntrees=ntrees, sample_size=sample_size, ndim=ndim, nthreads=-1,
+                        scoring_metric=metric, penalize_range=True, weigh_by_kurtosis=True,
+                    )
+                    if metric == "density":
+                        cfg_eif["penalize_range"] = False
+                        cfg_eif["weigh_by_kurtosis"] = False
 
-                # 分数方向自检（以防万一）
-                if y_true is not None:
-                    try:
-                        auc_pos = roc_auc_score(y_true, sc)
-                        auc_neg = roc_auc_score(y_true, -sc)
-                        if np.isfinite(auc_neg) and auc_neg > auc_pos:
-                            sc = -sc
-                    except Exception:
-                        pass
+                    sc = run_algo("EIF", Xp, cfg=cfg_eif)
+                    sc = smooth(sc, eif_pre["smooth_k"])
 
-                # 评估（优先用真实标签）
-                if y_true is not None:
-                    ap = average_precision_score(y_true, sc)
-                    thr = np.quantile(sc, 1 - top_q)
-                    y_pred = (sc >= thr).astype(int)
-                    prec, rec, f1, _ = precision_recall_fscore_support(
-                        y_true, y_pred, average="binary", zero_division=0)
-                else:
-                    thr = np.quantile(sc, 1 - top_q)
-                    y_ref = (sc >= thr).astype(int)
-                    ap = average_precision_score(y_ref, sc)
-                    prec = rec = f1 = np.nan
+                    if y_true is not None:
+                        try:
+                            auc_pos = roc_auc_score(y_true, sc)
+                            auc_neg = roc_auc_score(y_true, -sc)
+                            if np.isfinite(auc_neg) and auc_neg > auc_pos:
+                                sc = -sc
+                        except Exception:
+                            pass
 
-                # 记录一个“变体名”，便于 benchmark/曲线里区分
-                key = f"EIF[{metric}|n={ndim}|ss={sample_size}|t={ntrees}]"
-                variants.append((ap, key, sc, prec, rec, f1))
+                    if y_true is not None:
+                        ap = average_precision_score(y_true, sc)
+                        thr = np.quantile(sc, 1 - top_q)
+                        y_pred = (sc >= thr).astype(int)
+                        prec, rec, f1, _ = precision_recall_fscore_support(
+                            y_true, y_pred, average="binary", zero_division=0)
+                    else:
+                        thr = np.quantile(sc, 1 - top_q)
+                        y_ref = (sc >= thr).astype(int)
+                        ap = average_precision_score(y_ref, sc)
+                        prec = rec = f1 = np.nan
 
-            # 选最优变体，并把所有变体都写进 scores_map（便于画多条 EIF 曲线对比）
-            variants.sort(key=lambda z: z[0], reverse=True)
-            dt = time.perf_counter() - t0
-            log.info("EIF grid done | variants=%d | best=%.4f | time=%.2fs",
-                     len(variants), variants[0][0], dt)
+                    key = f"EIF[{metric}|n={ndim}|ss={sample_size}|t={ntrees}]"
+                    variants.append((ap, key, sc, prec, rec, f1))
 
-            # 所有变体都写入（Excel 每个变体一张 sheet，后续曲线可多条）
-            for ap, key, sc, prec, rec, f1 in variants:
-                scores_map[key] = sc
-                log.info("algo=%s | pr_auc=%.4f | f1=%s | time=%.2fs",
-                         name, pr_auc if 'pr_auc' in locals() else float('nan'),
-                         (f1 if 'f1' in locals() else 'n/a'), dt)
+                variants.sort(key=lambda z: z[0], reverse=True)
+                dt = time.perf_counter() - t0
+                log.info("EIF grid done | variants=%d | best=%.4f | time=%.2fs",
+                         len(variants), variants[0][0], dt)
+
+                # 只保留**最佳**变体进入 scores_map/benchmark（避免曲线爆炸）
+                ap, key, sc, prec, rec, f1 = variants[0]
+                scores_map["EIF"] = sc
                 rows.append({
-                    "algo": key, "seconds": round(dt, 2),
-                    "precision": prec, "recall": rec,
-                    "f1": f1, "pr_auc": ap,
-                    "roc_auc": (roc_auc_score(y_true, sc) if y_true is not None else np.nan)
+                    "algo": "EIF", "seconds": round(dt, 2),
+                    "precision": prec, "recall": rec, "f1": f1,
+                    "pr_auc": ap, "roc_auc": (roc_auc_score(y_true, sc) if y_true is not None else np.nan)
                 })
+                continue
 
-            # 跳过通用分支的后续（因为本分支已把 rows/scores_map 填好了）
+            # === 单次运行路径（默认） ===
+            # 1) 从文本解析/环境变量拿参数；若都没给，给一个合理默认
+            p = _parse_eif_params(processed_input)
+            ntrees = int(os.getenv("EIF_NTREES", p.get("ntrees", 900)))
+            ndim = int(os.getenv("EIF_NDIM", p.get("ndim", 1)))
+            metric = os.getenv("EIF_METRIC", p.get("scoring_metric", p.get("metric", "density")))
+            ss_raw = os.getenv("EIF_SAMPLE_SIZE", str(p.get("sample_size", "128")))
+            sample_size = int(ss_raw) if str(ss_raw).isdigit() else ss_raw
+
+            cfg_eif = dict(
+                ntrees=ntrees, sample_size=sample_size, ndim=ndim,
+                nthreads=-1, scoring_metric=metric,
+                penalize_range=(metric != "density"),
+                weigh_by_kurtosis=(metric != "density"),
+            )
+
+            sc = run_algo("EIF", Xp, cfg=cfg_eif)
+            sc = smooth(sc, eif_pre["smooth_k"])
+
+            # 分数方向自检
+            if y_true is not None:
+                try:
+                    auc_pos = roc_auc_score(y_true, sc)
+                    auc_neg = roc_auc_score(y_true, -sc)
+                    if np.isfinite(auc_neg) and auc_neg > auc_pos:
+                        sc = -sc
+                except Exception:
+                    pass
+
+            # 计算指标（与其它算法保持一致）
+            if y_true is not None:
+                thr = np.quantile(sc, 1 - top_q)
+                y_pred = (sc >= thr).astype(int)
+                prec, rec, f1, _ = precision_recall_fscore_support(
+                    y_true, y_pred, average="binary", zero_division=0)
+                ap = average_precision_score(y_true, sc)
+                try:
+                    roc_auc = roc_auc_score(y_true, sc)
+                except ValueError:
+                    roc_auc = np.nan
+            else:
+                thr = np.quantile(sc, 1 - top_q)
+                y_ref = (sc >= thr).astype(int)
+                ap = average_precision_score(y_ref, sc)
+                prec = rec = f1 = roc_auc = np.nan
+
+            dt = time.perf_counter() - t0
+
+            # 只写入一个“EIF”结果到 map/benchmark（不再铺满变体）
+            scores_map["EIF"] = sc
+            rows.append({
+                "algo": "EIF", "seconds": round(dt, 2),
+                "precision": prec, "recall": rec,
+                "f1": f1, "pr_auc": ap, "roc_auc": roc_auc
+            })
             continue
+
         if name == "AE":
             # ===== AE 分支 =====
             t0 = time.perf_counter()
@@ -446,10 +535,38 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
 
             dt = time.perf_counter() - t0
 
+        elif name == "LOF":
+            # ==== LOF：PCA 参数更易调试 ====
+            t0 = time.perf_counter()
+
+            # 方式 A：用预设（推荐）：通过环境变量 LOF_PCA_PRESET 选择
+                #  - "off"    : 关闭 PCA
+                #  - "var95"  : n_components=0.95（默认）
+                #  - "dim64"  : 固定 64 维（会自动夹到合法维度）
+                #  - "rand64" : 随机 SVD + 64 维（大样本更快）
+            preset = os.getenv("LOF_PCA_PRESET", "rand64").lower()
+
+            if preset == "off":
+                lof_cfg = {"pca": {"on": False}}
+            elif preset == "dim64":
+                lof_cfg = {"pca": {"on": True, "n_components": 64, "svd_solver": "auto", "whiten": False}}
+            elif preset == "rand64":
+                lof_cfg = {"pca": {"on": True, "n_components": 64, "svd_solver": "randomized",
+                                   "random_state": 42, "whiten": False}}
+            else:  # 默认 "var95"
+                lof_cfg = {"pca": {"on": True, "n_components": 0.95, "svd_solver": "auto", "whiten": False}}
+
+            # 方式 B：想完全手动可直接改这块：
+            # lof_cfg = {"pca": {"on": True, "n_components": 32, "svd_solver": "auto", "whiten": False}}
+
+
+            scores = run_algo("LOF", X, cfg=lof_cfg)
+            dt = time.perf_counter() - t0
+
         else:
             # ==== 其它算法 ====
             t0 = time.perf_counter()
-            scores = run_algo(name, X)  # run_algo 会根据 name 自行处理缩放/降维
+            scores = run_algo(name, X)  # 非 LOF/EIF/AE 保持原样
             dt = time.perf_counter() - t0
 
         scores_map[name] = scores
@@ -488,7 +605,10 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
     df['anomaly_score'] = scores_map[best]
 
     # 导出结果到 Excel
-    excel_path = os.path.splitext(csv_path)[0] + '_anomaly_results.xlsx'
+    outdir = Path(state.get("output_dir", "output"))
+    outdir.mkdir(parents=True, exist_ok=True)
+    base_name = _basename_for_csv_or_dir(csv_path)
+    excel_path = _ensure_unique_path(str(outdir / f"{base_name}_anomaly_results.xlsx"))
     with pd.ExcelWriter(excel_path, engine='openpyxl', mode='w') as w:
         sheet_map = {}
         used = set()
@@ -543,6 +663,8 @@ def _post_eval(state: dict) -> dict:
     sheet0 = pd.read_excel(xls, sheet_name=first_sheet)
     if "anomaly" in sheet0.columns:
         plt.figure()
+        topk = 6
+        plot_list = bench_df.sort_values("pr_auc", ascending=False)["algo"].head(topk).tolist()
         for algo in bench_df["algo"]:
             df_algo = pd.read_excel(xls, sheet_name=_sheet_for(algo))
             y_true = df_algo["anomaly"].values

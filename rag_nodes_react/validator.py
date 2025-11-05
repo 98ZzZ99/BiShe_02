@@ -29,6 +29,15 @@ FUNC_ALIAS = {
 
 MAX_RETRY = 3
 
+def _safe_json_loads(text: str) -> dict:
+    l, r = text.find("{"), text.rfind("}")
+    payload = text[l:r + 1] if (l != -1 and r != -1 and r > l) else text
+    try:
+        return json.loads(payload)
+    except Exception:
+        fixed = repair_json(payload)
+        return json.loads(fixed)
+
 def _alias(args: dict) -> dict:
     return {FUNC_ALIAS.get(k, k): v for k, v in args.items()}
 
@@ -85,7 +94,6 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     step = state.get("step", 0) + 1
     state["step"] = step
 
-
     if step > MAX_RETRY:
         state.update(route="finish", final_answer="[Error] too many retries")
         log.warning("Exceeded max retry, giving up.")
@@ -96,11 +104,10 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # ---------- 解析 JSON ----------
 
     try:
-        l, r = raw.find("{"), raw.rfind("}")
-        data = json.loads(raw[l:r + 1])
-    except (JSONDecodeError, Exception) as e:
+        data = _safe_json_loads(raw)
+    except Exception as e:
         state.update(route="error", observation=f"[JSON-Error] {e}")
-        log.error("JSON decode failed: %s", e)
+        log.error("JSON decode failed (after repair): %s", e)
         return state
 
     # -------- 生成 action_queue --------

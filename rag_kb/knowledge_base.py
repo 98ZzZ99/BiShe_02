@@ -26,13 +26,15 @@ class SimpleKB:
         if not self.docs:
             self.emb = np.zeros((0, 384), dtype="float32")
         else:
-            self.emb = self.model.encode(self.docs, convert_to_numpy=True, normalize_embeddings=True)
+            self.emb = self.model.encode(
+                self.docs, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+            )
         log.info("KB built | docs=%d", len(self.docs))
 
     def search(self, query: str, top_k=8) -> list[str]:
         if self.emb is None or len(self.docs) == 0:
             return []
-        q = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0]
+        q = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False)[0]
         scores = self.emb @ q
         idx = np.argsort(-scores)[:top_k]
         hits = [self.docs[i] for i in idx]

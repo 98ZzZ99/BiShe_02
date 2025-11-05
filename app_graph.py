@@ -9,7 +9,8 @@ from nodes.intent_router import IntentRouterNode
 from rag_kb.knowledge_base import KBNode
 from RAG_subgraph_qt_react import build_qt_react_subgraph
 from RAG_subgraph_anomaly import build_anomaly_subgraph
-from nodes.summarizer import SummarizerNode
+# ⬇️ 这行改成导入函数并起别名，避免与本地变量同名
+from nodes.summarizer import summarizer as summarizer_node
 
 class AppState(TypedDict, total=False):
     # input / preprocess
@@ -40,7 +41,6 @@ class AppState(TypedDict, total=False):
 _pre  = PreprocessNode()
 _intent = IntentRouterNode()
 _kb   = KBNode()
-_sum  = SummarizerNode()
 
 def _pre_node(state: Dict[str, Any]) -> Dict[str, Any]:
     log.info("ENTER node=pre | raw_len=%d", len(state["user_input"]))
@@ -63,8 +63,7 @@ def _kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
         csv_path=state.get("csv_path"),
         columns=state.get("columns", []),
     ))
-    return state
-    log.info("node=kb | snippets=%d", len(state.get("kb_snippets",[])))
+    log.info("node=kb | snippets=%d", len(state.get("kb_snippets", [])))
     return state
 
 def after_kb(state: Dict[str, Any]) -> str:
@@ -85,7 +84,8 @@ def after_qt(state: Dict[str, Any]) -> str:
     return "summarizer"
 
 def _summ_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    return _sum.run(state)
+    # summarizer 是一个函数，不是对象
+    return summarizer_node(state)
 
 def build_app_graph():
     sg = StateGraph(AppState)
