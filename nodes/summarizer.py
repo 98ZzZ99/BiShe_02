@@ -23,7 +23,7 @@ def _clip(txt: str, limit: int = MAX_PROMPT_CHARS) -> str:
     return s if len(s) <= limit else (s[:limit] + f"\n…[truncated to {limit} chars]")
 
 def _build_prompt(state: dict) -> str:
-    # 这里增加对 user_input / processed_input 的兼容
+    # This adds compatibility with user_input / processed_input.
     user_req = (
         state.get("user_input")
         or state.get("processed_input")
@@ -60,7 +60,7 @@ def _build_prompt(state: dict) -> str:
         produced.append(f"CSV: {last_csv}")
     for a in artifacts or []:
         produced.append(str(a))
-    # 同时把流程里常见的键也自动并入
+    # At the same time, commonly used keys in the process are also automatically incorporated.
     for k in ("excel_path", "pr_curve", "f1_curve", "roc_curve"):
         if state.get(k):
             produced.append(f"{k}: {state[k]}")
@@ -72,10 +72,10 @@ def _build_prompt(state: dict) -> str:
 
 def _call_llm(prompt: str) -> str:
     """
-    调用 DashScope 兼容的 /chat/completions。
-    关键点：
-    - 不使用 response_format/json schema（此前 400 多出在这里）
-    - 只发送纯文本 messages
+    Calls DashScope-compatible `/chat/completions`.
+    Key points:
+    - Do not use `response_format/json schema` (previously, 400+ errors occurred here)
+    - Only send plain text messages.
     """
     model = os.getenv("SUMMARIZER_MODEL", os.getenv("LLM_MODEL", "qwen-plus"))
     base_url = os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
@@ -95,12 +95,12 @@ def _call_llm(prompt: str) -> str:
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user",   "content": prompt},
         ],
-        # 注意：不要传 response_format、tools、function_call 等，以避免 400
+        # Note: Do not pass response_format, tools, function_call, etc., to avoid 400 errors.
     }
 
     log.info("summarizer.call | model=%s | url=%s", model, url)
     r = httpx.post(url, headers=headers, json=payload, timeout=60.0)
-    # 若失败，抛出以便触发本层的兜底
+    # If it fails, it will be thrown to trigger a fallback mechanism in this layer.
     r.raise_for_status()
     data = r.json()
     try:
@@ -110,9 +110,9 @@ def _call_llm(prompt: str) -> str:
 
 def summarizer(state: dict) -> dict:
     """
-    总结节点：
-    - 优先尝试 LLM；
-    - 出错则使用可读的本地兜底。
+    Summary of key points:
+    - Prioritize LLM;
+    - Use readable local fallback if an error occurs.
     """
     try:
         prompt = _build_prompt(state)
@@ -134,7 +134,7 @@ def summarizer(state: dict) -> dict:
             if state.get(k):
                 arts.append(f"{k}: {state[k]}")
 
-        # 统一读取用户请求
+        # Unified reading of user requests
         user_req = (
                 state.get("user_input")
                 or state.get("processed_input")

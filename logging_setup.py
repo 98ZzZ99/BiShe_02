@@ -23,7 +23,7 @@ def configure_logging():
 
     root.addHandler(ch); root.addHandler(fh)
 
-    # 降噪常见三方库
+    # Common third-party libraries for noise reduction
     logging.getLogger("openai").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("numba").setLevel(logging.WARNING)
@@ -34,7 +34,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 def log_call(logger: logging.Logger):
-    """函数级打点：入参 + 返回值（DF 会带 shape/cols）"""
+    """Function-level tagging: Input parameter + return value (DF will include shape/cols)"""
     def deco(fn):
         @wraps(fn)
         def wrapper(*a, **kw):

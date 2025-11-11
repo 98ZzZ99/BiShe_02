@@ -58,17 +58,17 @@ def _build_tool_docs() -> list[str]:
     return out
 
 class KBNode:
-    """构建 KB，并基于 query 召回若干片段，放入 state['kb_snippets']"""
+    """Build a KB and retrieve several snippets based on the query, then put them into state['kb_snippets']."""
     def run(self, query: str, csv_path: str | None, columns: list[str]) -> Dict[str, Any]:
         kb = SimpleKB()
-        # 1) 列名文档
+        # 1) Column Name Document
         cols = columns or (_columns_from_path(csv_path) if csv_path else [])
         for c in cols:
             kb.add(f"Column: {c} — Observed in the current dataset.")
-        # 2) 工具文档
+        # 2) Tool Documentation
         for d in _build_tool_docs():
             kb.add(d)
-        # 3) （可选）算法说明（简要）
+        # 3) (Optional) Algorithm Description (Brief)
         kb.add("EIF: Extended Isolation Forest (isotree). scoring_metric='depth'|'density'.")
         kb.add("AE: Autoencoder-based anomaly scoring (reconstruction error).")
         kb.add("LOF/OCSVM/COPOD/INNE: classic outlier detectors; input should be numeric features.")

@@ -22,7 +22,7 @@ log = get_logger("rag.anomaly")
 INVALID_SHEET_CHARS = r'[:\\/?*\[\]]'
 
 def _ensure_unique_path(path: str) -> str:
-    """若文件已存在，自动在末尾添加 _1, _2, ..."""
+    """If the file already exists, automatically append _1, _2, ... to the end."""
     base, ext = os.path.splitext(path)
     i, cand = 1, path
     while os.path.exists(cand):
@@ -31,7 +31,7 @@ def _ensure_unique_path(path: str) -> str:
     return cand
 
 def _basename_for_csv_or_dir(csv_path: str) -> str:
-    """目录名或文件无扩展名作为基名"""
+    """The directory name or file name without an extension is used as the base name."""
     p = Path(csv_path)
     if p.is_dir():
         return p.name
@@ -39,9 +39,9 @@ def _basename_for_csv_or_dir(csv_path: str) -> str:
 
 def _parse_eif_params(text: str) -> dict:
     """
-    从自然语言中解析 EIF 参数（可选）：
-      例： "EIF(n=3, ss=256, t=800, metric=density)"
-    支持键别名：
+    Parsing EIF parameters from natural language (optional):
+      e.g.： "EIF(n=3, ss=256, t=800, metric=density)"
+    Support key aliases：
       n/ndim, ss/sample_size, t/trees/ntrees, metric/scoring_metric
     """
     text = text.lower()
@@ -65,12 +65,12 @@ def _parse_eif_params(text: str) -> dict:
     return params
 
 def _to_sheet_name(name: str, used: set | None = None) -> str:
-    """把任意算法名变成合法的 Excel sheet 名（去非法字符、<=31 字符、避免重名）。"""
+    """Convert any algorithm name into a valid Excel sheet name (remove illegal characters, characters <= 31, and avoid duplicate names)."""
     import re
     s = re.sub(INVALID_SHEET_CHARS, '-', str(name)).strip()
     if not s:
         s = "sheet"
-    s = s[:31]  # Excel 限制
+    s = s[:31]  # Excel Limitations
     if used is not None:
         base, i = s, 1
         while s in used:
@@ -91,9 +91,9 @@ ALIAS = {
 
 def parse_algos(processed_input: str):
     """
-    从自然语言指令里解析出要运行的算法名称列表。
-    支持 EIF, LOF, COPOD, INNE, OCSVM，大小写不敏感。
-    返回值为空列表时表示使用全部算法。
+    Parse a list of algorithm names to be run from natural language instructions.
+    Supports EIF, LOF, COPOD, INNE, and OCSVM; case-insensitive.
+    An empty list indicates that all algorithms are used.
     """
     text = processed_input.lower()
     if any(x in text for x in ["全部", "所有", "all"]):
@@ -102,7 +102,7 @@ def parse_algos(processed_input: str):
     for alias, name in ALIAS.items():
         if alias in text:
             selected.append(name)
-    # 去重
+    # Deduplication
     return list(dict.fromkeys(selected))
 
 def get_loss(cfg):
@@ -139,17 +139,17 @@ def smooth(x, k=5):
 def _benchmark(state: dict, top_q: float = 0.02) -> dict:
     csv_path = state['csv_path']
     log.info("anomaly.benchmark | path=%s | top_q=%.3f", csv_path, top_q)
-    # 支持目录：将目录下所有 .csv 拼接
+    # Supports directories: Concatenates all .csv files in a directory.
     if os.path.isdir(csv_path):
         dfs = [load_data(f) for f in sorted(glob.glob(os.path.join(csv_path, '*.csv')))]
         df = pd.concat(dfs, ignore_index=True)
     else:
         df = load_data(csv_path)
-    # 保留真实标签
+    # Preserve authentic labels
     y_true = df['anomaly'].values if 'anomaly' in df.columns else None
-    # 选出数值特征
+    # Select numerical features
     feature_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
-    # 删除标签列和 changepoint
+    # Delete label column and changepoint
     for dropcol in ['anomaly', 'changepoint']:
         if dropcol in feature_cols:
             feature_cols.remove(dropcol)
@@ -160,21 +160,21 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
     processed_input = state.get("processed_input", "")
     selected_algos = state.get("algorithms") or parse_algos(processed_input)
     log.info("algorithms | selected=%s (empty means all=%s)", selected_algos, list(ALGOS.keys()))
-    if not selected_algos:  # 如果未解析到算法，则默认全选
+    if not selected_algos:  # If no algorithm is found, all will be selected by default.
         selected_algos = list(ALGOS.keys())
 
     rows, scores_map, tune_tables = [], {}, {}
-    # 仅遍历用户选择的算法
+    # If no algorithm is found, all will be selected by default.
     for name in selected_algos:
         if name not in ALGOS:
-            # 提前终止：包含未支持算法
+            # Early termination: Includes unsupported algorithms
             state.update({"route": "finish", "final_answer": f"算法 '{name}' 未支持"})
             return state
         elif name == "EIF":
-            # ===== EIF：单次运行（默认）；若需网格调参，文本含 'tune'/'grid' 或 EIF_TUNING=1 =====
+            # ===== EIF: Single run (default); if grid tuning is required, include 'tune'/'grid' in the text or EIF_TUNING=1 =====
             t0 = time.perf_counter()
 
-            # --- 预处理配置（与原逻辑一致，可按需调）---
+            # --- Preprocessing configuration (consistent with the original logic, can be adjusted as needed)---
             eif_pre = {
                 "scaler": "standard",  # "standard" | "robust" | "none"
                 "use_pca": False,
@@ -182,7 +182,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 "smooth_k": 11,
             }
 
-            # === 预处理 ===
+            # === Preprocessing ===
             X0 = X.copy()
             if eif_pre["scaler"] == "standard":
                 _scaler = StandardScaler();
@@ -205,7 +205,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                     pca = PCA(n_components=n_comp_use, svd_solver="auto", random_state=42)
                 Xp = pca.fit_transform(Xp)
 
-            # --- 是否走网格？默认否 ---
+            # --- Should we use the grid? Default: No. ---
             want_tune = (
                     ("tune" in processed_input.lower()) or
                     ("grid" in processed_input.lower()) or
@@ -213,7 +213,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             )
 
             if want_tune:
-                # === 原有『网格调参』路径（保留，必要时可用） ===
+                # === The existing 'mesh parameter tuning' path is retained and can be used when necessary. ===
                 grid_ntrees = [200, 400, 800]
                 grid_sample_size = [256, 512, 'auto']
                 grid_ndim = [1, 3]
@@ -263,7 +263,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 log.info("EIF grid done | variants=%d | best=%.4f | time=%.2fs",
                          len(variants), variants[0][0], dt)
 
-                # 只保留**最佳**变体进入 scores_map/benchmark（避免曲线爆炸）
+                # Only the **best** variants are included in scores_map/benchmark (to avoid curve explosion).
                 ap, key, sc, prec, rec, f1 = variants[0]
                 scores_map["EIF"] = sc
                 rows.append({
@@ -273,8 +273,8 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 })
                 continue
 
-            # === 单次运行路径（默认） ===
-            # 1) 从文本解析/环境变量拿参数；若都没给，给一个合理默认
+            # === Single run path (default) ===
+            # 1) Retrieve parameters from text parsing/environment variables; if neither is provided, assign a reasonable default.
             p = _parse_eif_params(processed_input)
             ntrees = int(os.getenv("EIF_NTREES", p.get("ntrees", 900)))
             ndim = int(os.getenv("EIF_NDIM", p.get("ndim", 1)))
@@ -292,7 +292,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             sc = run_algo("EIF", Xp, cfg=cfg_eif)
             sc = smooth(sc, eif_pre["smooth_k"])
 
-            # 分数方向自检
+            # Fractional direction self-test
             if y_true is not None:
                 try:
                     auc_pos = roc_auc_score(y_true, sc)
@@ -302,7 +302,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 except Exception:
                     pass
 
-            # 计算指标（与其它算法保持一致）
+            # Calculation metrics (consistent with other algorithms)
             if y_true is not None:
                 thr = np.quantile(sc, 1 - top_q)
                 y_pred = (sc >= thr).astype(int)
@@ -321,7 +321,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
 
             dt = time.perf_counter() - t0
 
-            # 只写入一个“EIF”结果到 map/benchmark（不再铺满变体）
+            # Write only one "EIF" result to map/benchmark (no longer fill the entire variant).
             scores_map["EIF"] = sc
             rows.append({
                 "algo": "EIF", "seconds": round(dt, 2),
@@ -331,36 +331,36 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             continue
 
         if name == "AE":
-            # ===== AE 分支 =====
+            # ===== AE branch =====
             t0 = time.perf_counter()
 
-            # 1) 载入 anomaly-free 训练自编码器
+            # 1) Load anomaly-free trained autoencoder
             path_csv = Path(csv_path).resolve()
             if path_csv.is_file():
-                base_skab_dir = path_csv.parent.parent  # …/SKAB/valveX/0.csv → 上两级是 SKAB
+                base_skab_dir = path_csv.parent.parent  # …/SKAB/valveX/0.csv → The two levels above are SKAB
             else:
-                base_skab_dir = path_csv.parent  # …/SKAB/valveX     → 上一级是 SKAB
+                base_skab_dir = path_csv.parent  # …/SKAB/valveX     → The one level above is SKAB
             anomaly_free_file = base_skab_dir / 'anomaly-free' / 'anomaly-free.csv'
             train_df = load_data(str(anomaly_free_file))
 
-            # 与测试列对齐，避免 anomaly-free 少/多列导致错位
+            # Align with the test column to avoid misalignment caused by missing/excessive columns in anomaly-free systems.
             feat_set = [c for c in feature_cols if c in train_df.columns]
             X_train = train_df[feat_set].values
             X_test = df[feat_set].values
 
-            # 2) 预处理（Scaler + 可选 PCA + 可选 滑窗）
+            # 2) Preprocessing (Scaler + optional PCA + optional sliding window)
             cfg = {
-                # --- 预处理 ---
+                # --- Preprocessing ---
                 "scaler": "standard",  # "standard" | "robust" | "quantile"
                 "use_pca": True,  # 先不开；若想试：True + pca_dim=64/128 或 95%方差
                 "pca_dim": 32,  # 0.95, 32, 64, 128
 
-                # --- 窗口 ---
+                # --- Window ---
                 "use_windows": False,  # 默认关闭；需要时再扫。(50,1), (100,1), (200,1), (100,5)
                 "win_len": 64,
                 "win_stride": 1,
 
-                # --- 结构 ---
+                # --- Structure ---
                 "hidden_units": [256, 128, 8],  # 32, 24, 16， 12， 8
                 "activation": "relu",  # "relu" | "elu" | "leaky_relu"
                 "use_batchnorm": True,
@@ -369,8 +369,8 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 "sparse_l1": 0.0,
                 "denoise_sigma": 0.0,
 
-                # --- 训练 ---
-                "loss": "mae",  # 你实验证明 MAE 最好
+                # --- Training ---
+                "loss": "mae",  # Your experiments have shown that MAE is the best.
                 "huber_delta": 1.0,
                 "lr": 1e-3,
                 "epochs": 200,
@@ -380,12 +380,12 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 "rop_factor": 0.2,
                 "rop_patience": 5,
 
-                # --- 后处理/阈值（用于参考，可与下方 top_q 分开） ---
+                # --- Post-processing/threshold (for reference only, may be separated from top_q below) ---
                 "smooth_k": 11,  # {1, 5, 11}
                 "thr_method": "quantile",  # "quantile" | "std" | "mad" | "pot"
-                "thr_q": 0.995,  # 分位法的 q
-                "pot_q0": 0.98,  # POT：基线阈 u 的分位（先取 0.98）
-                "pot_alpha": 1e-3  # POT：尾部风险水平
+                "thr_q": 0.995,  # q of the quantile method
+                "pot_q0": 0.98,  # POT: Quantile of baseline threshold u (starting with 0.98)
+                "pot_alpha": 1e-3  # POT: Tail Risk Level
             }
 
             # 2.1 Scaler
@@ -402,22 +402,22 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
 
-            # 2.2 PCA（可选）
+            # 2.2 PCA（optinal）
             pca = None
             if cfg["use_pca"]:
                 n_samples, in_dim0 = X_train_scaled.shape[:2]
 
-                # 允许两种写法：
-                # ① 传整数（目标维度）→ 自动夹到合法范围 [1, min(n_samples, in_dim0)-1]
-                # ② 传 0~1 的浮点数（解释为保留方差比例，如 0.95）
+                # Two ways to write this are allowed:
+                # ① Pass an integer (target dimension) → Automatically squeezed into the valid range [1, min(n_samples, in_dim0)-1]
+                # ② Pass a floating-point number between 0 and 1 (interpreted as preserving the variance proportion, such as 0.95)
                 n_comp = cfg["pca_dim"]
 
                 if isinstance(n_comp, float) and 0.0 < n_comp < 1.0:
-                    # 方差占比写法，交给 sklearn 自动估计
+                    # The variance proportion is written and automatically estimated by sklearn.
                     pca = PCA(n_components=n_comp, svd_solver="full", random_state=42)
                 else:
-                    # 整数维度写法：自动夹逼，避免 "must be between 0 and min(n_samples, n_features)" 的报错
-                    max_comp = max(1, min(n_samples, in_dim0) - 1)  # -1 避免满秩导致求解失败
+                    # Integer dimension syntax: Automatically squeezes to avoid "must be between 0 and min(n_samples, n_features)" error.
+                    max_comp = max(1, min(n_samples, in_dim0) - 1)  # -1 to avoid the solution failing due to full rank.
                     if n_comp is None:
                         n_comp_use = min(in_dim0, max_comp)
                     else:
@@ -428,10 +428,10 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 X_train_scaled = pca.fit_transform(X_train_scaled)
                 X_test_scaled = pca.transform(X_test_scaled)
 
-            # 2.3 滑窗（可选）：把 [T, D] → [N, L*D]
+            # 2.3 Sliding window (optional): Change [T, D] to [N, L*D]
             def make_windows(X2d, L=100, stride=1):
                 T, D = X2d.shape
-                if T < L:  # 太短，返回 None 触发回退
+                if T < L:  # Too short, return None to trigger a fallback.
                     return None, None
                 idx = np.arange(0, T - L + 1, stride)
                 Xw = np.stack([X2d[i:i + L].reshape(-1) for i in idx], axis=0)
@@ -440,7 +440,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             if cfg["use_windows"]:
                 X_train_in, _ = make_windows(X_train_scaled, L=cfg["win_len"], stride=cfg["win_stride"])
                 X_test_in, idx_te = make_windows(X_test_scaled, L=cfg["win_len"], stride=cfg["win_stride"])
-                # 若序列过短或没形成窗口，自动回退到逐点
+                # If the sequence is too short or does not form a window, it will automatically revert to point-by-point.
                 if X_train_in is None or X_test_in is None:
                     cfg["use_windows"] = False
                     X_train_in, X_test_in = X_train_scaled, X_test_scaled
@@ -449,17 +449,17 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 X_train_in, X_test_in = X_train_scaled, X_test_scaled
                 idx_te = None
 
-            # 3) 构建 AE（注意：输入维取窗口化后的）
+            # 3) Construct the AE (Note: the input dimensions are the windowed result).
             input_dim = X_train_in.shape[1]
             autoencoder = build_autoencoder(input_dim, cfg)
 
-            # 4) 编译
-            opt = Adam(learning_rate=cfg["lr"])  # Keras 3: 用 learning_rate（不是 lr）
-            if not hasattr(opt, "lr"):  # 兼容少数回调/日志读取 .lr
+            # 4) Compilation
+            opt = Adam(learning_rate=cfg["lr"])  # Keras 3: use learning_rate（not lr）
+            if not hasattr(opt, "lr"):  # 兼Allows for a few callbacks/log readings. .lr
                 opt.lr = opt.learning_rate
             autoencoder.compile(optimizer=opt, loss=get_loss(cfg))
 
-            # 5) 训练（早停 + 降学习率）
+            # 5) Training (early stop + reduce learning rate)
             callbacks = [
                 EarlyStopping(monitor="val_loss",
                               patience=cfg["earlystop_patience"],
@@ -483,11 +483,11 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 verbose=0
             )
 
-            # 6) 打分（重构误差）
+            # 6) Scoring (Reconstruction Error)
             recon = autoencoder.predict(X_test_in, verbose=0)
             err = np.mean((X_test_in - recon) ** 2, axis=1)
 
-            # 窗口回投到逐点
+            # Window recast to point
             if cfg["use_windows"] and idx_te is not None and len(err) > 0:
                 T = X_test_scaled.shape[0]
                 scores = np.zeros(T, dtype=float)
@@ -503,10 +503,10 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             else:
                 scores = err
 
-            # 7) 可选：平滑
+            # 7) Optional: Smooth
             scores = smooth(scores, cfg["smooth_k"])
 
-            # 8) 分数方向自检（避免 AUROC≈0.5 的“反号”问题）
+            # 8) Self-check the fraction direction (to avoid the "reverse sign" problem when AUROC≈0.5)
             if y_true is not None:
                 try:
                     auc_pos = roc_auc_score(y_true, scores)
@@ -516,18 +516,18 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 except Exception:
                     pass
 
-            # 9) 参考阈值（不影响下面统一的 top_q 评估）
+            # 9) Reference threshold (does not affect the unified top_q evaluation below)
             if cfg["thr_method"] == "pot":
                 try:
-                    # 注意：不要在这里 'import numpy as np'，否则会把 np 变成本函数的局部变量
+                    # Note: Do not 'import numpy as np' here, otherwise np will become a local variable of this function.
                     from scipy.stats import genpareto as _gpd
                     u = np.quantile(scores, cfg["pot_q0"])
                     excess = scores[scores > u] - u
-                    # 仅拟合尾部（loc 固定为 0）
+                    # Fit only the tail (loc is fixed to 0)
                     c, loc, scale = _gpd.fit(excess, floc=0)
                     pot_thr = u + _gpd.ppf(1 - cfg["pot_alpha"], c, loc=0, scale=scale)
                 except Exception:
-                    # scipy 不可用或尾部太短时，回退到分位数阈值
+                    # If scipy is unavailable or the tail is too short, fall back to the quantile threshold.
                     pot_thr = np.quantile(scores, cfg["thr_q"])
                 # y_pred_ref = (scores >= pot_thr).astype(int)  # 如需参考标签可解开
             else:
@@ -536,14 +536,14 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             dt = time.perf_counter() - t0
 
         elif name == "LOF":
-            # ==== LOF：PCA 参数更易调试 ====
+            # ==== LOF: PCA parameters are easier to adjust ====
             t0 = time.perf_counter()
 
-            # 方式 A：用预设（推荐）：通过环境变量 LOF_PCA_PRESET 选择
-                #  - "off"    : 关闭 PCA
-                #  - "var95"  : n_components=0.95（默认）
-                #  - "dim64"  : 固定 64 维（会自动夹到合法维度）
-                #  - "rand64" : 随机 SVD + 64 维（大样本更快）
+            # Method A: Use the default (recommended): Select via environment variable LOF_PCA_PRESET
+                #  - "off"    : Close PCA
+                #  - "var95"  : n_components=0.95 (default)
+                #  - "dim64"  : Fixed 64 dimensions (will automatically be clipped to valid dimensions)
+                #  - "rand64" : Random SVD + 64 dimensions (faster for large samples)
             preset = os.getenv("LOF_PCA_PRESET", "rand64").lower()
 
             if preset == "off":
@@ -556,7 +556,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             else:  # 默认 "var95"
                 lof_cfg = {"pca": {"on": True, "n_components": 0.95, "svd_solver": "auto", "whiten": False}}
 
-            # 方式 B：想完全手动可直接改这块：
+            # Method B: If you want to do it completely manually, you can directly modify this part:
             # lof_cfg = {"pca": {"on": True, "n_components": 32, "svd_solver": "auto", "whiten": False}}
 
 
@@ -564,15 +564,15 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             dt = time.perf_counter() - t0
 
         else:
-            # ==== 其它算法 ====
+            # ==== Other algorithms ====
             t0 = time.perf_counter()
-            scores = run_algo(name, X)  # 非 LOF/EIF/AE 保持原样
+            scores = run_algo(name, X)  # Non-LOF/EIF/AE formats should remain unchanged.
             dt = time.perf_counter() - t0
 
         scores_map[name] = scores
 
         if y_true is not None:
-            # 根据分位数 threshold 计算预测标签
+            # Calculate predicted labels based on quantile thresholds
             thr = np.quantile(scores, 1 - top_q)
             y_pred = (scores >= thr).astype(int)
             prec, rec, f1, _ = precision_recall_fscore_support(
@@ -588,7 +588,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
                 "f1": f1, "pr_auc": pr_auc, "roc_auc": roc_auc
             })
         else:
-            # 无真实标签时仅输出 pr_auc
+            # When there are no real labels, only pr_auc is output.
             thr = np.quantile(scores, 1 - top_q)
             y_ref = (scores >= thr).astype(int)
             pr_auc = average_precision_score(y_ref, scores)
@@ -599,12 +599,12 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             })
 
     bench_df = pd.DataFrame(rows)
-    # 在选定算法内挑选 pr_auc 或 f1 最高的模型
+    # Select the model with the highest pr_auc or f1 score from the chosen algorithms.
     best = bench_df.sort_values('pr_auc', ascending=False)['algo'].iloc[0]
     log.info("best algo=%s", best)
     df['anomaly_score'] = scores_map[best]
 
-    # 导出结果到 Excel
+    # Export results to Excel
     outdir = Path(state.get("output_dir", "output"))
     outdir.mkdir(parents=True, exist_ok=True)
     base_name = _basename_for_csv_or_dir(csv_path)
@@ -613,7 +613,7 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
         sheet_map = {}
         used = set()
 
-        # 每个算法/变体一张 sheet（名字先规整）
+        # One sheet per algorithm/variant (names should be organized first).
         for algo, sc in scores_map.items():
             sheet = _to_sheet_name(algo, used)
             sheet_map[algo] = sheet
@@ -624,16 +624,16 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
             })
             tmp.to_excel(w, sheet_name=sheet, index=False)
 
-        # 在 benchmark 里附带 sheet 名，便于 post_eval 读取
+        # Include sheet names in the benchmark to facilitate post_eval reading.
         bench_out = bench_df.copy()
         bench_out['sheet'] = bench_out['algo'].map(sheet_map)
         bench_out.to_excel(w, sheet_name='benchmark', index=False)
 
-        # 若跑了 EIF 的网格调参，把结果也写入
+        # If you ran the EIF mesh parameter tuning, also write the results to...
         if "EIF" in tune_tables:
             tune_tables["EIF"].to_excel(w, sheet_name="EIF_tuning", index=False)
 
-    # 末尾写回：
+    # Write back at the end:
     state['sheet_map'] = sheet_map
     state['execution_output'] = df.sort_values('anomaly_score', ascending=False).head(5)[['time_stamp', 'anomaly_score']]
     state['bench_summary'] = bench_df
@@ -644,21 +644,21 @@ def _benchmark(state: dict, top_q: float = 0.02) -> dict:
 
 def _post_eval(state: dict) -> dict:
     """
-    读取 benchmark 写出的 Excel，再根据是否有真实标签绘制 PR 曲线。
-    如果存在 anomaly 列，则用真实标签计算 PR‑AUC；
-    否则调用现有 run_evaluation() 生成伪标签评估。
+    Read the Excel file generated by the benchmark and then plot the PR curve based on whether there are real labels.
+    If an anomaly column exists, calculate the PR-AUC using the real labels;
+    Otherwise, call the existing run_evaluation() function to generate a pseudo-label evaluation.
     """
     excel_path = state["excel_path"]
     bench_df = state.get("bench_summary")
-    # 打开 Excel 文件，检查是否有 'anomaly' 列
+    # Open the Excel file and check if there is a 'anomaly' column.
     xls = pd.ExcelFile(excel_path)
-    # 从 state 取回写 Excel 时保存的映射（若没有就用规整函数重建）
+    # Retrieve the mapping saved when writing Excel from the state (rebuild it using a regularization function if it doesn't exist).
     sheet_map = state.get("sheet_map", {})
 
     def _sheet_for(algo: str) -> str:
         return sheet_map.get(algo, _to_sheet_name(algo))
 
-    # 用映射后的第一个 sheet 试探是否含有真实标签列
+    # Use the first sheet after mapping to test whether it contains a real label column.
     first_sheet = _sheet_for(bench_df["algo"].iloc[0])
     sheet0 = pd.read_excel(xls, sheet_name=first_sheet)
     if "anomaly" in sheet0.columns:
@@ -681,7 +681,7 @@ def _post_eval(state: dict) -> dict:
         plt.savefig(pr_path, dpi=300)
         plt.close()
 
-        # (1) F1 曲线
+        # (1) F1 Cureve
         plt.figure()
         for algo in bench_df["algo"]:
             df_algo = pd.read_excel(xls, sheet_name=_sheet_for(algo))
@@ -699,7 +699,7 @@ def _post_eval(state: dict) -> dict:
         plt.savefig(f1_path, dpi=300)
         plt.close()
 
-        # (2) ROC 曲线
+        # (2) ROC Cureve
         plt.figure()
         for algo in bench_df["algo"]:
             df_algo = pd.read_excel(xls, sheet_name=_sheet_for(algo))
@@ -723,7 +723,7 @@ def _post_eval(state: dict) -> dict:
         log.info("plots saved | pr=%s | f1=%s | roc=%s", pr_path, f1_path, roc_path)
         return state
 
-    # 没有真实标签时，走原来的伪标签评估逻辑
+    # When there are no real labels, the original pseudo-label evaluation logic applies.
     summary = run_evaluation(excel_path)
     state["eval_summary"] = summary
     return state

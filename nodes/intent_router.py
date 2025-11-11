@@ -13,7 +13,7 @@ load_dotenv()
 
 INTENT_MODE = os.getenv("INTENT_MODE", "llm").lower()  # "llm" | "rule"
 
-# ---- DashScope OpenAI 兼容端点 ----
+# ---- DashScope OpenAI compatible endpoint ----
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
     "https://dashscope.aliyuncs.com/compatible-mode/v1"  # 国际区：dashscope-intl.aliyuncs.com/compatible-mode/v1
@@ -34,9 +34,9 @@ _SYS = (
 
 def _safe_json_loads(text: str) -> dict:
     """
-    尝试稳健地从模型输出中提取 JSON：
-    1) 截取最外层 {...}
-    2) 先 json.loads；失败则用 json_repair.repair_json 修复后再 loads
+    To robustly extract JSON from the model output:
+    1) Truncate the outermost {...}
+    2) First run `json.loads`; if that fails, repair it with `json_repair.repair_json` before running `loads` again.
     """
     l, r = text.find("{"), text.rfind("}")
     payload = text[l:r+1] if (l != -1 and r != -1 and r > l) else text
@@ -86,21 +86,21 @@ class IntentRouterNode:
                 log.warning("intent.llm failed (%s). Fallback to rule mode.", e)
                 out = self._rule(processed_input)
 
-        # —— 与规则引擎进行“并集纠偏”，避免 LLM 漏判 ——
+        # —— Perform "union correction" with the rules to avoid LLM from missing judgments. ——
         rule_guess = self._rule(processed_input)
 
         def _b(x): return bool(x)
         out["need_qt"]      = _b(out.get("need_qt"))      or _b(rule_guess.get("need_qt"))
         out["need_anomaly"] = _b(out.get("need_anomaly")) or _b(rule_guess.get("need_anomaly"))
 
-        # 算法集合（去重 + 合法化）
+        # Algorithm set (duplicate removal + validation)
         allow = {"EIF","AE","LOF","COPOD","INNE","OCSVM"}
         algos_llm  = [str(a).upper() for a in (out.get("algorithms") or [])]
         algos_rule = [str(a).upper() for a in (rule_guess.get("algorithms") or [])]
         algos = [a for a in dict.fromkeys(algos_llm + algos_rule) if a in allow]
         out["algorithms"] = algos or None
 
-        # 路径兜底：优先用 preprocess 给到的绝对路径；否则对 LLM 路径做归一化与存在性修复
+        # Path fallback: Prioritize the absolute path provided by preprocess; otherwise, normalize and perform existence correction on the LLM path.
         if csv_path:
             out["csv_path"] = str(Path(csv_path))
         elif out.get("csv_path"):

@@ -8,15 +8,15 @@ log = logging.getLogger("rag.qt")
 
 def _validate_switch(state: dict) -> str:
     r = state.get("route")
-    if r == "execute": return "execute"  # 继续跑队列
+    if r == "execute": return "execute"  # Continue running the queue
     if r == "finish":  return END
     log.info("validator -> thought (replan)")
-    return "thought"   # 其他情况回到思考
+    return "thought"   # Other situations require further consideration.
 
 def _after_execute(state: dict) -> str:
     r = state.get("route")
-    if r == "execute": return "validate"  # 队列里还有 action → 直接走 validator 的“有队列就回 execute”逻辑
-    if r == "error":   return "thought"   # 工具报错 → 回 thought 让 LLM 观察/重规划
+    if r == "execute": return "validate"  # There are still actions in the queue → directly execute the validator's "execute if there is a queue" logic.
+    if r == "error":   return "thought"   # Tool error → Return to thought to let LLM observe/replan
     log.info("execute -> END")
     return END                            # finish
 

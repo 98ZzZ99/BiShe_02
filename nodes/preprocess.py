@@ -21,11 +21,11 @@ def _best_match(token: str, columns: List[str]) -> str | None:
     return cands[sims.index(max(sims))]
 
 class PreprocessNode:
-    """提取 csv 路径/目录；读取列名；列名纠错到 processed_input；返回 columns 与 csv_path"""
+    """Extract the CSV path/directory; read column names; correct column name errors to processed_input; return columns and csv_path."""
     def run(self, user_input: str) -> Dict[str, Any]:
         log.info("start preprocess | raw=%s", user_input)
         lower = user_input.lower().strip()
-        # 1) SKAB 目录快速路径
+        # 1) SKAB directory quick path
         if "skab" in lower:
             base = Path.cwd() / "data" / "SKAB"
             group = None
@@ -34,7 +34,7 @@ class PreprocessNode:
             csv_dir = base / group if group else base
             if not csv_dir.exists():
                 raise FileNotFoundError(f"目录不存在: {csv_dir}")
-            # 任取一个文件采样列名
+            # Randomly select a file to sample column name
             sample = next(csv_dir.glob("*.csv"))
             df = load_data(str(sample))
             cols = df.columns.tolist()
@@ -42,12 +42,12 @@ class PreprocessNode:
             log.info("preprocess | SKAB dir=%s | cols=%d", csv_dir, len(cols))
             return {"processed_input": corrected, "csv_path": str(csv_dir), "columns": cols}
 
-        # 2) 单文件：匹配 *.csv
+        # 2) Single file: Matches *.csv
         m = re.search(r"\b([A-Za-z0-9_\./\\-]+\.csv)\b", user_input, flags=re.I)
         if m:
             p = Path(m.group(1))
             if not p.exists():
-                # 在 data/ 里找
+                # Look in data/
                 for d in [Path.cwd()/ "data", Path.cwd()]:
                     cand = d / p.name
                     if cand.exists(): p = cand; break
@@ -57,8 +57,8 @@ class PreprocessNode:
             log.info("preprocess | file=%s | cols=%d", p, len(cols))
             return {"processed_input": corrected, "csv_path": str(p), "columns": cols}
 
-        # 3) 无路径：用默认 CSV
-        # 3) 无路径：用默认 CSV
+        # 3) No path: Use the default CSV
+        # 3) No path: Use the default CSV
         from RAG_tool_functions import CSV_FILE
         df = load_data(CSV_FILE)
         cols = df.columns.tolist()

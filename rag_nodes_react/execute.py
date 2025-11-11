@@ -36,7 +36,7 @@ def execute_node(state: Dict[str, Any]) -> Dict[str, Any]:
     outdir = _ensure_outdir(state)
     step_i = int(state.get("qt_step", 0))
 
-    # —— 若游标为空且有 csv_path，则自动载入一次 DataFrame 作为起始游标 ——
+    # —— If the cursor is empty and has a csv_path, the DataFrame will be automatically loaded once as the starting cursor. ——
     if cur is None and state.get("csv_path"):
         try:
             path = str(state["csv_path"])
@@ -45,7 +45,7 @@ def execute_node(state: Dict[str, Any]) -> Dict[str, Any]:
             elif path.lower().endswith((".xlsx", ".xls")):
                 cur = pd.read_excel(path)
             else:
-                cur = None  # 目录等情况不自动加载
+                cur = None  # Directory and other similar items are not automatically loaded.
             if isinstance(cur, pd.DataFrame):
                 state["execution_output"] = cur
                 log.info("Primed cursor from csv_path -> DataFrame shape=%s", cur.shape)
@@ -56,7 +56,7 @@ def execute_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if not queue:
         state.update(route="finish", final_answer=str(cur))
         log.info("No more actions -> finish")
-        # 最终若是 DF，确保持久化一次
+        # If it is ultimately a DF (Deep Foundation), ensure persistence once.
         if isinstance(cur, pd.DataFrame):
             path = _save_df(cur, outdir, "qt_result_latest.csv")
             state["qt_last_csv"] = path
@@ -76,21 +76,21 @@ def execute_node(state: Dict[str, Any]) -> Dict[str, Any]:
         log.exception("Tool raised exception")
         return state
 
-    # —— 只在结果为 DF/Series 时更新游标；否则保持游标不变 ——
+    # —— Update the cursor only when the result is a DF/Series; otherwise, leave the cursor unchanged. ——
     updated_cursor = False
 
-    # Series 统一转成 DataFrame，便于预览/落盘
+    # Series are uniformly converted to DataFrames for easier previewing and disk writing.
     if isinstance(result, pd.Series):
         result = result.to_frame()
         log.info("Coerced Series to DataFrame for preview/persist")
 
     if isinstance(result, pd.DataFrame):
-        # 更新游标
+        # Update cursor
         state["execution_output"] = result
         cur = result
         updated_cursor = True
 
-        # 预览 + 中间结果落盘
+        # Preview + intermediate results saved to disk
         preview = textwrap.dedent(result.head(MAX_PREVIEW).to_string(index=False))
         state["final_answer"] = f"[DataFrame] top-{MAX_PREVIEW} rows\n{preview}"
 
@@ -102,20 +102,20 @@ def execute_node(state: Dict[str, Any]) -> Dict[str, Any]:
             state["qt_last_csv"] = path
             log.info("Saved intermediate DF -> %s", path)
     else:
-        # 非 DF 结果：记录但不改变游标，避免污染后续步骤（例如相关系数为 float）
+        # Non-DF results: Record the results but do not modify the cursor to avoid polluting subsequent steps (e.g., the correlation coefficient is float).
         side = state.setdefault("non_df_results", [])
         side.append({fname: result})
         log.debug("Non-DF result from %s: %r (cursor unchanged)", fname, result)
 
-        # 若是有副作用的函数返回了文件路径，收集到 artifacts
+        # If a function with side effects returns a file path, collect the artifacts.
         if fname in SIDE_EFFECT_FUNCS and isinstance(result, str):
             arts = state.setdefault("qt_artifacts", [])
             arts.append(result)
 
-        # 提供一个简短可读的输出
+        # Provide a short and readable output
         state["final_answer"] = f"[{fname}] {result}"
 
-    # —— 继续 or 结束 ——
+    # —— Continue or End ——
     state["route"] = "execute" if state.get("action_queue") else "finish"
     if state["route"] == "finish":
         if isinstance(cur, pd.DataFrame):

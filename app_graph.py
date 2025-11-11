@@ -9,7 +9,7 @@ from nodes.intent_router import IntentRouterNode
 from rag_kb.knowledge_base import KBNode
 from RAG_subgraph_qt_react import build_qt_react_subgraph
 from RAG_subgraph_anomaly import build_anomaly_subgraph
-# ⬇️ 这行改成导入函数并起别名，避免与本地变量同名
+# ↓ Change this line to import a function and give it an alias to avoid it having the same name as a local variable.
 from nodes.summarizer import summarizer as summarizer_node
 
 class AppState(TypedDict, total=False):
@@ -17,7 +17,7 @@ class AppState(TypedDict, total=False):
     user_input: str
     processed_input: str
     csv_path: str | None
-    columns: list[str]       # 当前数据集列名全集
+    columns: list[str]       # Full set of column names in the current dataset
     # intent
     need_qt: bool
     need_anomaly: bool
@@ -57,7 +57,7 @@ def _intent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 def _kb_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    # 构建/刷新 KB 并把与本轮 query 相关的片段放进 state["kb_snippets"]
+    # Build/refresh KB and add snippets related to the current query to state["kb_snippets"].
     state.update(_kb.run(
         query=state["processed_input"],
         csv_path=state.get("csv_path"),
@@ -84,7 +84,7 @@ def after_qt(state: Dict[str, Any]) -> str:
     return "summarizer"
 
 def _summ_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    # summarizer 是一个函数，不是对象
+    # `summarizer` is a function, not an object.
     return summarizer_node(state)
 
 def build_app_graph():
@@ -93,7 +93,7 @@ def build_app_graph():
     sg.add_node("pre", _pre_node)
     sg.add_node("intent", _intent_node)
     sg.add_node("kb", _kb_node)
-    sg.add_node("qt",  build_qt_react_subgraph())     # Q&T 子图直接作为节点
+    sg.add_node("qt",  build_qt_react_subgraph())     # Q&T subgraph directly used as nodes
     sg.add_node("anomaly", build_anomaly_subgraph())
     sg.add_node("summarizer", _summ_node)
 

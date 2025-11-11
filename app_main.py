@@ -8,7 +8,7 @@ load_dotenv(find_dotenv(), override=True)
 configure_logging()
 log = get_logger("app")
 
-# 输出目录可配；默认 ./output
+# The output directory is configurable, the default is ./output.
 OUTPUT_DIR = pathlib.Path(os.getenv("OUTPUT_DIR", "output"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -24,7 +24,7 @@ def main() -> None:
     print("\n=== FINAL OUTPUT ===")
     print(result_state.get("final_answer"))
 
-    # —— 明确告知产物位置（若存在）——
+    # —— Clearly state the location of the product (if it exists).——
     artifacts = []
     for k in ["qt_last_csv", "excel_path", "pr_curve", "f1_curve", "roc_curve"]:
         if result_state.get(k):

@@ -1,6 +1,6 @@
 # AD_algorithms.py
 """
-统一管理要跑的异常检测模型
+Unified management of the anomaly detection models to be run
 EIF      – isotree.IsolationForest
 LOF      – PyOD kNN‑LOF
 COPOD    – PyOD COPOD
@@ -33,9 +33,9 @@ from RAG_tool_functions import load_data
 
 def _apply_pca_with_guard(X: np.ndarray, pca_cfg: dict | None) -> np.ndarray:
     """
-    安全地应用 PCA（支持 n_components 为 0~1 浮点或整数）。
-    - 浮点(0,1)：方差占比
-    - 整数：自动夹到 [1, min(n_samples, n_features)-1]，避免越界报错
+    Apply PCA safely (supports n_components as floating-point or integer from 0 to 1).
+    - Floating-point (0,1): Variance percentage
+    - Integer: Automatically clipped to [1, min(n_samples, n_features)-1] to avoid out-of-bounds errors.
     """
     if not pca_cfg or not pca_cfg.get("on", False):
         return X
@@ -64,18 +64,18 @@ def _apply_pca_with_guard(X: np.ndarray, pca_cfg: dict | None) -> np.ndarray:
               whiten=whiten, random_state=random_state)
     return pca.fit_transform(X)
 
-# --- ② 工厂函数 —— 返回已经 .fit() 好且带 .decision_scores_ 属性的对象
+# --- ② Factory function — Returns an object that has already been fitted using .fit() and has the .decision_scores_ property.
 def _wrap_pyod(cls, **kw):
-    """把 PyOD 模型封装成 “无参构造器” 便于延迟实例化"""
+    """Encapsulating PyOD models into "parameterless constructors" facilitates lazy instantiation."""
     return lambda: cls(**kw)
 
 ALGOS: Dict[str, Callable[[], object]] = {
     "EIF":   lambda : IsolationForest(ntrees=300, sample_size='auto', ndim=1, nthreads=-1),
     "LOF":   lambda: LocalOutlierFactor(
         n_neighbors     =   75,
-        novelty         =   False,              # 同批数据打分
-        contamination   =   'auto',             # 若用分位阈值评估，影响很小
-        metric          =   'minkowski', p=1,   # 先用欧氏'minkowski', p=2；随后试 p=1（Manhattan）；最后是'chebyshev'
+        novelty         =   False,              # Scoring of the same batch of data
+        contamination   =   'auto',             # If quantile thresholds are used for evaluation, the impact is minimal.
+        metric          =   'minkowski', p=1,   # First, try Euclidean 'minkowski', p=2; then try p=1 (Manhattan); finally, try 'chebyshev'.
         n_jobs          =   -1
     ),
     "COPOD": _wrap_pyod(COPOD),
@@ -87,12 +87,12 @@ ALGOS: Dict[str, Callable[[], object]] = {
 def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
     log.info("AE.build | input_dim=%d | cfg=%s", input_dim, (cfg and "custom") or "simple")
     """
-    构建自编码器（不编译）。
-    - 若 cfg is None：回退到一个简单的对称 AE，兼容旧逻辑。
-    - 若 cfg 提供：使用可配置的深层对称瓶颈、可选 BN/Dropout/稀疏/DAE/输出激活。
+    Build an autoencoder (without compiling).
+    - If cfg is None: Fall back to a simple symmetric AE, compatible with legacy logic.
+    - If cfg provides: Use configurable deep symmetric bottlenecks, optional BN/Dropout/sparse/DAE/output activation.
     """
     if cfg is None:
-        # ---- 兼容旧版的简单 AE ----
+        # ---- Compatible with older versions of Simple After Effects ----
         inp = Input(shape=(input_dim,))
         x = Dense(16, activation='relu')(inp)
         x = Dense(8, activation='relu')(x)
@@ -102,8 +102,8 @@ def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
         out = Dense(input_dim, activation='linear')(x)
         return Model(inputs=inp, outputs=out)
 
-    # ---- 可配置的深层 AE ----
-    hidden_units = cfg.get("hidden_units", [128, 64, 16])  # 最后一层为瓶颈
+    # ---- Configurable deep AE ----
+    hidden_units = cfg.get("hidden_units", [128, 64, 16])  # The last layer is the bottleneck.
     activation   = cfg.get("activation", "relu")           # "relu" | "elu" | "leaky_relu"
     use_bn       = bool(cfg.get("use_batchnorm", True))
     dropout_rate = float(cfg.get("dropout_rate", 0.0))
@@ -124,11 +124,11 @@ def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
     inputs = Input(shape=(input_dim,))
     x = inputs
 
-    # 去噪自编码器（仅训练期生效）
+    # Denoising autoencoder (effective only during training)
     if denoise_sig and denoise_sig > 0:
         x = GaussianNoise(denoise_sig)(x)
 
-    # 编码器（除瓶颈外）
+    # Encoder (excluding bottleneck)
     for units in hidden_units[:-1]:
         x = Dense(units)(x)
         if use_bn:
@@ -137,7 +137,7 @@ def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
         if dropout_rate > 0:
             x = Dropout(dropout_rate)(x)
 
-    # 瓶颈层（可加活动正则）
+    # Bottleneck layer (active regular expressions can be added)
     bottleneck = hidden_units[-1]
     if sparse_l1 and sparse_l1 > 0:
         x = Dense(bottleneck, activation=None,
@@ -148,7 +148,7 @@ def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
         x = BatchNormalization()(x)
     x = act_layer(x)
 
-    # 解码器（对称）
+    # Decoder (symmetric)
     for units in reversed(hidden_units[:-1]):
         x = Dense(units)(x)
         if use_bn:
@@ -163,34 +163,34 @@ def build_autoencoder(input_dim: int, cfg: dict | None = None) -> Model:
 def train_autoencoder(normal_data):
     log.info("AE.train | samples=%d features=%d", *normal_data.shape)
     """
-    normal_data: ndarray of shape (n_samples, n_features) 只包含正常样本特征
-    返回训练好的 autoencoder 模型和 scaler
+    normal_data: ndarray of shape (n_samples, n_features) includes only normal sample features
+    Returns the trained autoencoder model and scaler.
     """
     scaler = StandardScaler()
     X_train = scaler.fit_transform(normal_data)
     input_dim = X_train.shape[1]
     autoencoder = build_autoencoder(input_dim)
-    # 训练 epochs 可根据需要调整，这里设为20，verbose=0 静默训练
+    # The number of training epochs can be adjusted as needed; here it is set to 20, and verbose=0 for silent training.
     autoencoder.fit(X_train, X_train, epochs=20, batch_size=64, shuffle=True, verbose=0)
     log.info("AE.train | done")
     return autoencoder, scaler
 
 def _try_get_score(model, X, prefer_neg=True) -> np.ndarray:
     """
-    尽量拿到“连续”得分并统一方向：越大越异常
+    Try to get "continuous" scores and maintain a consistent direction: the larger the score, the more abnormal it is.
     """
-    # --- LOF 特判：统一为“越大越异常” ---
+    # --- LOF Special Criterion: "The larger the value, the more abnormal" ---
     if isinstance(model, LocalOutlierFactor):
         if getattr(model, "novelty", False):
-            # novelty=True 时，用 score_samples/decision_function，数值越低越异常 → 取负
+            # When novelty=True, use score_samples/decision_function; the lower the value, the more abnormal it is → take the negative value.
             return (-model.score_samples(X).ravel()).astype(float)
         else:
-            # novelty=False 时，用 negative_outlier_factor_，数值越小越异常 → 取负
+            # When novelty=False, use negative_outlier_factor_; the smaller the value, the more outlier it is → take the negative value.
             return (-model.negative_outlier_factor_.ravel()).astype(float)
 
     if hasattr(model, "decision_scores_"):            # PyOD / LOF(novelty=True)
         scores = model.decision_scores_
-        prefer_neg = False  # ← ★加这一行 EIF / PyOD 系算法“越大越异常”
+        prefer_neg = False  # ← ★ Add this line: EIF/PyOD algorithms indicate that "the larger the value, the more abnormal it is."
     elif hasattr(model, "anomaly_score_"):            # isotree EIF
         scores = model.anomaly_score_
         prefer_neg = False
@@ -201,17 +201,17 @@ def _try_get_score(model, X, prefer_neg=True) -> np.ndarray:
         scores = model.negative_outlier_factor_
     elif hasattr(model, "score_samples"):
         scores = model.score_samples(X).ravel()
-    else:                                             # 最坏：±1 标签
+    else:                                             # Worst case: ±1 tag
         scores = model.predict(X).astype(float)
         prefer_neg = True
 
-    # 统一方向
+    # Unified direction
     return (-scores if prefer_neg else scores).astype(float)
 
 def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
     """
-    统一调度各算法，返回连续 anomaly score。
-    分数越大 → 越异常。
+    All algorithms are scheduled uniformly, returning continuous anomaly scores.
+    Higher scores indicate more anomalies.
     """
     cfg = {} if cfg is None else cfg
     if name == "EIF":
@@ -219,7 +219,7 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
         penalize_range   = cfg.get("penalize_range", True)
         weigh_by_kurtosis = cfg.get("weigh_by_kurtosis", True)
 
-        # ★ 关键：density 与 penalize_range/权重 不兼容，必须关闭
+        # ★ Key point: density is incompatible with penalize_range/weight and must be turned off.
         if scoring_metric == "density":
             penalize_range = False
             weigh_by_kurtosis = False
@@ -233,7 +233,7 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
             weigh_by_kurtosis=weigh_by_kurtosis,
         )
 
-        # 兼容不同版本的 isotree：有 scoring_metric 就传，没有就忽略
+        # Compatible with different versions of isotree: Send the scoring_metric if it exists, ignore it if it doesn't.
         try:
             model = IsolationForest(scoring_metric=scoring_metric, **base_params)
         except TypeError:
@@ -241,23 +241,23 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
 
         model.fit(X)
 
-        # 拟合训练集后优先用 anomaly_score_（越大越异常）
+        # After fitting the training set, prioritize using anomaly_score (the larger the score, the more outliers).
         if hasattr(model, "anomaly_score_"):
             return model.anomaly_score_.astype(float)
 
         return _try_get_score(model, X, prefer_neg=False)
-    # --- EIF：支持可配参数 ---
+    # --- EIF: Supports configurable parameters ---
 
-    # 1) 特征缩放：距离 / 密度模型敏感
-    # if name in {"LOF", "OCSVM", "INNE", "COPOD"}: —— 尝试修改为只对 OCSVM 进行标准化
-    # 1) 先缩放：LOF/OCSVM 都对尺度敏感
-    # 1) 缩放
+    # 1) Feature scaling: Distance/density model sensitive
+    # if name in {"LOF", "OCSVM", "INNE", "COPOD"}: —— Try modifying it to only standardize OCSVM
+    # 1) First, scale: LOF/OCSVM are both scale-sensitive.
+    # 1) Scaling
     if name in {"OCSVM", "LOF"}:
         X_ = StandardScaler().fit_transform(X)
     else:
         X_ = X
 
-    # 1.5) PCA（统一护栏 + 默认：仅 LOF 开启 0.95）
+    # 1.5) PCA (Uniform Guardrail + Default: LOF Only 0.95)
     use_pca_default = (name == "LOF")
     pca_cfg = {}
     if isinstance(cfg.get("pca"), dict):
@@ -267,7 +267,7 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
 
     X_ = _apply_pca_with_guard(X_, pca_cfg if pca_cfg.get("on", False) else None)
 
-    # 2) 训练
+    # 2) Train
     model = ALGOS[name]()
     model.fit(X_)
 
@@ -277,6 +277,6 @@ def run_algo(name: str, X: np.ndarray, cfg: dict | None = None) -> np.ndarray:
                   hasattr(model, "decision_function"),
                   hasattr(model, "negative_outlier_factor_"))
 
-    # 3) 取分（统一为“越大越异常”）
+    # 3) Scoring (with the standard rule of "higher score indicates greater abnormality")
     scores = _try_get_score(model, X_, prefer_neg=True)
     return scores

@@ -1,14 +1,14 @@
 # RAG_tool_functions.py
-# 说明：此文件包含“选择”、“排序”、“平均”、“中位数”、“众数”等工具函数
-#       以及对 CSV 数据的加载和处理逻辑
+# Note: This file contains utility functions such as "select", "sort", "average", "median", and "mode".
+#       And the logic for loading and processing CSV data.
 """
-全局 DataFrame → DataFrame
-select_rows（支持 AND/OR）、sort_rows、top_n、group_top_n、filter_date_range、add_derived_column、rolling_average
+Global DataFrame → DataFrame
+select_rows（supporting AND/OR）、sort_rows、top_n、group_top_n、filter_date_range、add_derived_column、rolling_average
 
-统计标量
+Statistical Scalar
 calculate_average、median、mode、sum、min、max、std、variance、percentile、correlation、covariance
 
-专用
+special
 calculate_failure_rate、calculate_delay_avg
 """
 
@@ -20,7 +20,7 @@ from pathlib import Path
 from logging_setup import get_logger, log_call
 
 def _get_one(d, *keys, default=None):
-    """从 args 中按优先级取第一个存在且非 None 的键；并把单元素列表解包为标量。"""
+    """Take the first non-None key that exists in args according to priority; and unpack the single-element list into a scalar."""
     for k in keys:
         if k in d and d[k] is not None:
             v = d[k]
@@ -30,32 +30,32 @@ def _get_one(d, *keys, default=None):
     return default
 
 def _ensure_dt(df, col):
-    """把列强制转成 datetime64（就地转换）。"""
+    """Force the column to datetime64 (in-place conversion)."""
     if col not in df.columns:
         raise KeyError(f"列不存在: {col}")
     if not np.issubdtype(df[col].dtype, np.datetime64):
         df[col] = pd.to_datetime(df[col], errors="coerce")
     return df[col]
 
-# 供 add_derived_column 的 {last_scalar} 占位符使用
+# For {last_scalar} placeholder in add_derived_column
 _LAST_SCALAR = None
 
 log = get_logger("tools")
 
-# ---------- 常量 ----------
+# ---------- Constant ----------
 _BOPS = {"==": _op.eq, "!=": _op.ne, "<=": _op.le,
          ">=": _op.ge, "<": _op.lt,  ">": _op.gt}
 
 TIME_COLS = ["Scheduled_Start", "Scheduled_End", "Actual_Start", "Actual_End"]
 CSV_FILE = os.path.join("data", "hybrid_manufacturing_categorical.csv")
 
-# ---------- 基础 ----------
+# ---------- Base ----------
 TIME_COLS = ["Scheduled_Start", "Scheduled_End", "Actual_Start", "Actual_End"]
 CSV_FILE = os.path.join("data", "hybrid_manufacturing_categorical.csv")
 
-# ==== 公共小工具 ====
+# ==== Public Tools ====
 def _col(args: dict, *names, default=None):
-    """尝试依次获取列名（column / target_column / …）"""
+    """Try retrieving the column names sequentially (column / target_column / …)."""
     for n in names:
         if n in args:
             return args[n]
@@ -63,10 +63,10 @@ def _col(args: dict, *names, default=None):
         return default
     raise KeyError(f"Need one of {names}")
 
-# RAG_tool_functions.py  —— 统一别名工具
+# RAG_tool_functions.py  —— Unified Alias Tool
 def _pick_target(d: dict, *keys: str, default=None):
-    """返回 d 中第一个命中的 key；兼容 {"derived": {...}} 写法"""
-    # 兜底：当 LLM 错将 {"derived": {"Energy_Consumption": "Energy_Consumption"}} 当参数
+    """Returns the first matching key in d; compatible with the {"derived": {...}} syntax."""
+    # A fallback: When LLM mistakenly uses {"derived": {"Energy_Consumption": "Energy_Consumption"}} as a parameter
     if "derived" in d and isinstance(d["derived"], dict) and len(d["derived"]) == 1:
         return next(iter(d["derived"].values()))
     for k in keys:
@@ -76,7 +76,7 @@ def _pick_target(d: dict, *keys: str, default=None):
         return default
     raise KeyError(f"Expect one of {keys}")
 
-# ----------- 通用小工具 -----------
+# ----------- General tools -----------
 def _df(cur):
     """始终返回 DataFrame；避免布尔歧义"""
     return cur if cur is not None else load_data()
@@ -84,10 +84,10 @@ def _df(cur):
 @log_call(log)
 def load_data(path: str | None = None) -> pd.DataFrame:
     """
-    通用 CSV 读取函数：自动识别分隔符并解析时间列。
-    1. 若首行分号多于逗号，使用 `;` 作为分隔符；否则仍使用 `,`。
-    2. 去除列名首尾空格，并将空格替换为 `_`。
-    3. 将 `datetime` 列重命名为 `time_stamp`，并使用 `pd.to_datetime` 解析。
+    General CSV Reading Functions: Automatically Recognize Delimiters and Parse Time Columns.
+    1. If the first row contains more semicolons than commas, use `;` as the delimiter; otherwise, use `,`.
+    2. Remove leading and trailing spaces from column names and replace spaces with `_`.
+    3. Rename the `datetime` column to `time_stamp` and parse it using `pd.to_datetime`.
     """
     p = Path(path or CSV_FILE)
     if not p.exists():
@@ -95,10 +95,10 @@ def load_data(path: str | None = None) -> pd.DataFrame:
     with p.open("r", encoding="utf-8", errors="ignore") as f:
         sample_line = f.readline()
     sep = ';' if sample_line.count(';') > sample_line.count(',') else ','
-    # 读取数据
+    # Read data
     try:
         if sep == ',':
-            # 逗号分隔时可以提前解析预定义的时间列
+            # When using comma-separated time columns, predefined time columns can be parsed in advance.
             header = sample_line.rstrip('\n')
             cols = [c.strip() for c in header.split(sep)]
             date_cols = [c for c in TIME_COLS if c in cols]
@@ -107,35 +107,35 @@ def load_data(path: str | None = None) -> pd.DataFrame:
             df = pd.read_csv(p, sep=sep)
     except ValueError:
         df = pd.read_csv(p, sep=sep)
-    # 清理列名并重命名 datetime
+    # Clean up column names and rename datetime
     df.columns = [c.strip().replace(' ', '_') for c in df.columns]
     if 'datetime' in df.columns:
         df = df.rename(columns={'datetime': 'time_stamp'})
-    # 解析时间戳列
+    # Parse timestamp column
     for c in df.columns:
         if c.lower().endswith('timestamp') or c.lower() == 'time_stamp':
             df[c] = pd.to_datetime(df[c], errors='coerce')
     return df
 
 def _num(s: pd.Series):
-    """安全转数值（失败返回 NaN）"""
+    """Safe conversion to numerical value (returns NaN if unsuccessful)"""
     return pd.to_numeric(s, errors="coerce")
 
-# ---------- 1) 行级函数 (DF→DF) ----------
+# ---------- 1) Row-level function (DF→DF) ----------
 @log_call(log)
 # def select_rows(cur, args):
 #     """
-#     支持：
-#       • 单列比较     {column:…, condition:" > 5"}  或 {condition:"Processing_Time <= 50"}
-#       • AND / OR     … AND …
-#       • 列间表达式   ">= Other_Col + 10"
-#       • 时间比较     'HH:MM'
-#       • top_n        condition:"top_n" + n/order/sort_column
-#       • 时间差表达式 "Actual_End - Actual_Start > 4 hours"
+#       Supported:
+#           • Single column comparison {column:…, condition:" > 5"} or {condition:"Processing_Time <= 50"}
+#           • AND / OR … AND …
+#           • Inter-column expression ">= Other_Col + 10"
+#           • Time comparison 'HH:MM'
+#           • top_n condition:"top_n" + n/order/sort_column
+#           • Time difference expression "Actual_End - Actual_Start > 4 hours"
 #     """
 #     df = _df(cur)
 #
-#     # ---------- top_n 特殊分支 ----------
+#     # ---------- top_n special branches ----------
 #     if args.get("condition") == "top_n":
 #         col      = args.get("column") or args.get("target_column") or args.get("sort_column")
 #         if not col:
@@ -145,12 +145,12 @@ def _num(s: pd.Series):
 #         sort_col = args.get("sort_column", col)
 #         return df.sort_values(sort_col, ascending=asc).head(n)
 #
-#     # 安全获取 condition
+#     # Securely obtain condition
 #     if "condition" not in args:
 #         raise ValueError("select_rows 需要 'condition'")
 #     condition = str(args["condition"]).strip()
 #
-#     # ---------- 缺省列名：优先从 condition 头部解析 ----------
+#     # ---------- Default column names: parsed first from the condition header. ----------
 #     col = args.get("column") or args.get("target_column")
 #     if col is None:
 #         m0 = re.match(r"\s*([A-Za-z_]\w*)\s*(==|!=|<=|>=|<|>)", condition)
@@ -220,8 +220,8 @@ def _num(s: pd.Series):
 def select_rows(df, args):
     """
     args:
-      - query / condition: pandas query 字符串；也支持 'true' / 'True' / '*' 全量。
-      - 当出现 "Scheduled_End - Scheduled_Start >= X hour(s)" 的自然语句时，自动解析。
+      - query / condition: pandas query string; also supports 'true' / 'True' / '*' full values.
+      - When a natural statement such as "Scheduled_End - Scheduled_Start >= X hour(s)" appears, it is automatically parsed.
     """
     if df is None:
         raise ValueError("select_rows: 当前数据为空")
@@ -234,7 +234,7 @@ def select_rows(df, args):
     if q.lower() in ("true", "all", "*"):
         return df.copy()
 
-    # 解析“时间差 >= X hour(s)”的自然语言
+    # Parsing the natural language of "time difference >= X hour(s)"
     low = q.lower().replace(" ", "")
     if ("scheduled_end-scheduled_start" in low) and (">=" in low) and ("hour" in low):
         import re
@@ -247,7 +247,7 @@ def select_rows(df, args):
         mask = (end - start) >= pd.Timedelta(hours=hours)
         return df.loc[mask].copy()
 
-    # 否则走 pandas.query（要求列名是合法变量名；若不行可改用布尔表达式）
+    # Otherwise, use pandas.query (the column names must be valid variable names; if not, you can use a boolean expression instead).
     try:
         return df.query(q).copy()
     except Exception as e:
@@ -268,8 +268,8 @@ def top_n(df, args):
     """
     args:
       - n: int
-      - column/sort_column/target_column (可选)：若给出则按该列排序后取前 n；否则直接 df.head(n)
-      - pair/columns (可选)：取列
+      - column/sort_column/target_column (optional): If given, sort by this column and take the first n; otherwise, directly use df.head(n).
+      - pair/columns (optional): retrieve columns
     """
     if df is None:
         raise ValueError("top_n: 当前数据为空")
@@ -285,7 +285,7 @@ def top_n(df, args):
 
 @log_call(log)
 def group_top_n(cur, args):
-    """每组取前 N；可 keep_all=True 保留其余列"""
+    """Take the first N from each group; you can keep_all=True to retain the remaining columns."""
     df = _df(cur)
     g  = args["group_column"]
     s  = _pick_target(args, "sort_column", "column")
@@ -299,7 +299,7 @@ def group_top_n(cur, args):
 @log_call(log)
 def filter_date_between_start_end(cur, args):
     """
-    快捷时间窗口
+    Quick Time Window
       args = {"column":"Actual_Start",
               "start":"2023-03-18 10:00",
               "end":"2023-03-18 12:00",
@@ -359,10 +359,10 @@ def filter_date_between_start_end(cur, args):
 
 def add_derived_column(df, args):
     """
-    新增派生列。
-    - 目标列名：'target_column' / 'name' / 'column'
-    - 支持公式 "A - B" 表示时间差；unit 可为 'minutes'(默认)/'hours'/'seconds'
-    - 其它表达式尝试用 pd.eval 计算（列名需为合法变量名）
+    Added derived columns.
+    - Target column name: 'target_column' / 'name' / 'column'
+    - Supports formulas "A - B" representing time difference; unit can be 'minutes' (default) / 'hours' / 'seconds'
+    - Other expressions can be calculated using pd.eval (column names must be valid variable names)
     """
     if df is None:
         raise ValueError("add_derived_column: 当前数据为空")
@@ -373,7 +373,7 @@ def add_derived_column(df, args):
     if not name or not formula:
         raise ValueError("add_derived_column 需要 'formula' 和 目标列名('target_column'/'name')")
 
-    # 时间差：A - B
+    # Time difference：A - B
     m = re.fullmatch(r"\s*(\w+)\s*-\s*(\w+)\s*", formula)
     if m:
         a, b = m.groups()
@@ -389,7 +389,7 @@ def add_derived_column(df, args):
         df[name] = val
         return df
 
-    # 其它表达式：pd.eval
+    # Other expressions：pd.eval
     try:
         df[name] = pd.eval(formula, engine="python",
                            local_dict={c: df[c] for c in df.columns})
@@ -419,8 +419,8 @@ def rolling_average(df, args):
     """
     args:
       - window: int
-      - group_by: str 列名
-      - target_column / column: 目标数值列
+      - group_by: str column names
+      - target_column / column: target numerical column
     """
     if df is None:
         raise ValueError("rolling_average: 当前数据为空")
@@ -444,7 +444,7 @@ _AGG_MAP = {
     "max": "max",  "min": "min",
     "std": "std",  "var": "var",
     "variance":"var",
-    "percentile":"quantile",  # ← 新增
+    "percentile":"quantile",  # ← New
 }
 
 @log_call(log)
@@ -493,8 +493,8 @@ _AGG_MAP = {
 
 def group_by_aggregate(df, args):
     """
-    分组聚合：必须给 group_column；目标列可用 'pair'（单列时可为 str 或单元素 list）、
-    或 'column'、或 'target_column'；agg 默认为 'mean'。
+    Grouping aggregation: group_column must be specified; the target column can be 'pair' (or str or single-element list for a single column),
+    or 'column', or 'target_column'; agg defaults to 'mean'.
     """
     if df is None:
         raise ValueError("group_by_aggregate: 当前数据为空")
@@ -518,7 +518,7 @@ def calculate_average(cur, args):
     col = _pick_target(args, "column", "target_column")
     df  = _df(cur)
 
-    if " - " in col:   # 快捷：日期差 (秒)
+    if " - " in col:   # Quick: Date Difference (seconds)
         lhs, rhs = [c.strip() for c in col.split("-", 1)]
         delta = (pd.to_datetime(df[lhs]) - pd.to_datetime(df[rhs])).dt.total_seconds()
         unit  = args.get("unit")
@@ -564,10 +564,10 @@ def calculate_percentile(cur, args):
 @log_call(log)
 def calculate_correlation(cur, args):
     """
-    计算两列的相关系数。
-    args 可以传 { "x":"colA", "y":"colB" }
-           也支持 { "column1":…, "column2":… } 兼容老 JSON。
-    遇到样本不足时返回 np.nan 并附带中文提示（第二返回值）。
+    Calculate the correlation coefficient between two columns.
+    The `args` parameter can be `{ "x":"colA", "y":"colB" }`
+        It also supports `{ "column1":…, "column2":… }` for compatibility with older JSON.
+    If there are insufficient samples, it returns `np.nan` with a Chinese message (the second return value).
     """
     df = _df(cur)
     col1 = (args.get("x") or args.get("column1")
@@ -584,12 +584,12 @@ def calculate_correlation(cur, args):
 @log_call(log)
 def count_rows(cur, _=None): return int(len(_df(cur)))
 
-# ---------- 4) 业务专用 ----------
+# ---------- 4) Business-specific ----------
 @log_call(log)
 def calculate_delay_avg(cur,args=None):
     """
-    计算 delay=(col1-col2) 的平均值。
-    返回原 df，并把标量写到 _STATE['last_scalar']。
+    Calculate the average of delay = (col1 - col2).
+    Return the original df and write the scalar to _STATE['last_scalar'].
     """
     df = _df(cur)
     dsec = (pd.to_datetime(df[args["column1"]]) -
@@ -613,12 +613,12 @@ def calculate_failure_rate(cur,args):
     total  = df.groupby(g).size()
     return (failed / total).fillna(0).reset_index(name="failure_rate")
 
-# --------- 新增：延迟平均（分组）-----------
+# --------- New addition: Average latency (grouped)-----------
 @log_call(log)
 def calculate_delay_avg_grouped(cur, args):
     """
-    计算 delay=(col1-col2) 的平均值。
-    返回原 df，并把标量写到 _STATE['last_scalar']。
+    Calculate the average of delay = (col1 - col2).
+    Return the original df and write the scalar to _STATE['last_scalar'].
     """
     df = _df(cur)
     dsec = (pd.to_datetime(df[args["column1"]]) -
@@ -630,15 +630,15 @@ def calculate_delay_avg_grouped(cur, args):
     df = df.assign(delay=dsec / 60)
     return df
 
-# ---------- 5) 导出 / 可视化 ----------
+# ---------- 5) Export / Visualization ----------
 @log_call(log)
 def graph_export(df, args):
     """
-    基于当前 df 构造二部图 Machine_ID ↔ Job_ID（不携带时间属性），导出 GEXF。
-    参数：
-      file: 输出路径（必填）
-      machine_col: 默认为 'Machine_ID'
-      job_col:     默认为 'Job_ID'
+Construct a bipartite graph Machine_ID ↔ Job_ID (without time attribute) based on the current depth graph (df), and export it as a GEXF file.
+Parameters:
+    file: Output path (required)
+    machine_col: Defaults to 'Machine_ID'
+    job_col: Defaults to 'Job_ID'
     """
     import networkx as nx
     dst = args.get("file")
@@ -668,10 +668,10 @@ def graph_export(df, args):
     nx.write_gexf(G, dst)
     return dst
 
-# ========== 新增 2) plot_machine_avg_bar ==========
+# ========== New 2) plot_machine_avg_bar ==========
 @log_call(log)
 def plot_machine_avg_bar(df, args):
-    """绘制每台机器指定度量的平均值柱状图并保存。"""
+    """Plot a bar chart of the average values for the specified metrics for each machine and save it."""
     import matplotlib.pyplot as plt
     metric = _get_one(args, "metric", default="Energy_Consumption")
     dst = args.get("file", "output/avg_metric.png")
@@ -689,11 +689,11 @@ def plot_machine_avg_bar(df, args):
     plt.close()
     return dst
 
-# ========== 新增 3) plot_concurrent_tasks_line ==========
+# ========== New 3) plot_concurrent_tasks_line ==========
 @log_call(log)
 def plot_concurrent_tasks_line(cur, args: dict | None = None):
     """
-    绘制随时间并发任务数折线
+    Plot a line graph of the number of concurrent tasks over time.
       args = {"freq": "10T", "file": "output/concurrent.png"}
     """
     import matplotlib.pyplot as plt
@@ -701,7 +701,7 @@ def plot_concurrent_tasks_line(cur, args: dict | None = None):
     freq = (args or {}).get("freq", "10T")
     dst  = (args or {}).get("file", "output/concurrent_tasks.png")
 
-    # 构建时间线 (+1/-1)
+    # Building a timeline (+1/-1)
     events = []
     for _, r in df.iterrows():
         events.append((pd.to_datetime(r["Actual_Start"]), +1))
@@ -722,12 +722,12 @@ def plot_concurrent_tasks_line(cur, args: dict | None = None):
 @log_call(log)
 def select_columns(cur, args):
     """
-    保留 / 重排列：args["columns"] 或 args["pair"]
-    允许写成 "Job_ID, delay" 字符串
+    Preserve/rearrange: args["columns"] or args["pair"]
+    Allows to be written as the string "Job_ID, delay"
     """
     df = _df(cur)
 
-    # 兼容两种字段名
+    # Compatible with two field names
     cols = args.get("columns") or args.get("pair")
     if cols is None:
         raise ValueError("select_columns: expect 'columns' key")

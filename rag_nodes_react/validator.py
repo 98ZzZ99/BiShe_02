@@ -10,20 +10,20 @@ from .models import Action, Finish
 log = logging.getLogger("rag.validator")
 
 FUNC_ALIAS = {
-    # 针对 group_by_aggregate
+    # Regarding group_by_aggregate
     "group_by_aggregate": {
         "value_column": "target_column",
         "return_direct": "target_column",
         "agg_column":    "target_column",
     },
-    # 针对 group_top_n
+    # Regarding group_top_n
     "group_top_n": {
         "sort_column": "column",
     },
-    # covariance / correlation 两列写在 columns 数组
+    # The covariance and correlation columns are written in the columns array.
     "calculate_covariance": {"columns->": ("x", "y")},
     "calculate_correlation": {"columns->": ("x", "y")},
-    # “Job_Type” 或 “job type” 被用户/LLM写出来时会自动替换成真实列 Operation_Type
+    # When “Job_Type” or “job type” is written by the user/LLM, it will be automatically replaced with the actual column Operation_Type.
     "job_type": "Operation_Type",
 }
 
@@ -51,28 +51,28 @@ def _normalize(act: dict) -> dict:
         "y": "other_column",
         "columns": "pair",
         "sort_column": "column",
-        # 新增：适配 sort_rows 可能的别名
+        # Added: Adapts to possible aliases for sort_rows
         "sort_by": "column",
         "by": "column",
         "on": "column",
     }
     a = act.get("args", {})
 
-    # pair 展开
+    # pair expand
     if a.get("pair") and len(a["pair"]) == 2:
         a["x"], a["y"] = a.pop("pair")
 
-    # 统一重命名
+    # unified renaming
     for k in list(a.keys()):
         if k in ALIAS:
             a[ALIAS[k]] = a.pop(k)
 
-    # 统一 order 写法
+    # Standardize the use of order
     if "order" in a:
         v = str(a["order"]).lower()
         a["order"] = "asc" if v in ("asc", "ascending", "升序") else "desc" if v in ("desc", "descending", "降序") else a["order"]
 
-    # select_rows 的最小必需：保证有 condition 键（有些模型可能给 where/expr）
+    # The minimum requirement for select_rows: A condition key must be present (some models may provide where/expr).
     if act.get("function") == "select_rows":
         if "condition" not in a:
             if "where" in a: a["condition"] = a.pop("where")
@@ -82,15 +82,15 @@ def _normalize(act: dict) -> dict:
     return act
 
 def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    # ---------- 队列未清空，直接回执行 ----------
+    # ---------- If the queue is not cleared, proceed directly to execution. ----------
     if state.get("route") == "finish":
         return state
 
-    if state.get("action_queue"):          # 还有待执行步骤
+    if state.get("action_queue"):          # Steps still pending.
         state["route"] = "execute"
         return state
 
-    raw = state.pop("llm_output", "")        # ➊ 取出后立即 pop，避免下一轮重复解析
+    raw = state.pop("llm_output", "")        # ➊ Pop immediately after retrieval to avoid repeated parsing in the next round.
     step = state.get("step", 0) + 1
     state["step"] = step
 
@@ -101,7 +101,7 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     log.debug("Validator step %s | raw (200 chars): %s", step, raw[:200])
 
-    # ---------- 解析 JSON ----------
+    # ---------- Parsing JSON ----------
 
     try:
         data = _safe_json_loads(raw)
@@ -112,17 +112,17 @@ def validator_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # -------- 生成 action_queue --------
     try:
-        if "actions" in data:                                    # 多步
+        if "actions" in data:                                    # Multi-step
             acts = [_normalize(a) for a in data["actions"]]
-        elif "finish" in data:                                   # 一步回答
+        elif "finish" in data:                                   # Answer in one step
             state.update(route="finish", final_answer=data["finish"])
             return state
-        else:                                                    # 单 action
+        else:                                                    # Single action
             acts = [_normalize(data)]
 
         state["action_queue"] = [Action.model_validate(a).model_dump()
                                   for a in acts]
-        state["route"] = "execute"               # ❷ 永远只发往 execute
+        state["route"] = "execute"               # ❷ Always send to execute
         return state
     except ValidationError as e:
         state.update(route="error", observation=f"[Action-Validation] {e}")
